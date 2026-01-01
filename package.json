@@ -1,0 +1,26 @@
+{
+  "name": "web-based-spc-analysis-tool",
+  "version": "1.0.0",
+  "description": "A standalone web-based Statistical Process Control (SPC) analysis tool for manufacturing process analysis",
+  "main": "index.js",
+  "scripts": {
+    "install": "echo Please run InstallDependencies.bat to install all dependencies",
+    "start": "echo Please run StartApplication.bat to start the application",
+    "dev": "echo Please run StartApplication.bat to start the application"
+  },
+  "keywords": [
+    "spc",
+    "statistical-process-control",
+    "manufacturing",
+    "quality-control",
+    "analysis",
+    "xbar-r-chart",
+    "control-chart"
+  ],
+  "author": "QIP Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "not specified"
+  }
+}
