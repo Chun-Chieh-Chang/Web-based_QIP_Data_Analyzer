@@ -126,6 +126,107 @@ Where A₂, D₃, and D₄ are control chart constants that depend on subgroup s
 ## Documentation
 - Complete user manual: `SPC_Tool_User_Manual.md`
 
+## Using the Web-based SPC Analyzer
+
+### Prerequisites
+- **Node.js** (v14 or later)
+- **Python** (v3.7 or later)
+- **Modern web browser** (Chrome, Firefox, Edge, Safari)
+
+### Installation and Setup
+
+1. **Clone or download** the repository to your local machine:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/Web-based-SPC-Analyzer.git
+   ```
+
+2. **Install backend dependencies**:
+   ```bash
+   cd Web-based-SPC-Analyzer/backend
+   pip install -r requirements.txt
+   ```
+
+3. **Install frontend dependencies**:
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+
+### Running the Application
+
+#### Method 1: Using Start Scripts
+1. **For Command Prompt users**: Run `StartApplication.bat` to start both backend and frontend servers
+2. **For PowerShell users**: Run `StartApplication.ps1` to start both backend and frontend servers (requires running `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first)
+3. The application will be accessible at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
+
+#### Method 2: Manual Start
+1. Start the backend server:
+   ```bash
+   cd backend
+   python main.py
+   ```
+   The backend will start on an available port (typically 8000 or higher)
+
+2. In a new terminal, start the frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   The frontend will start on port 5173
+
+3. Access the application at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
+
+### Usage Instructions
+
+1. **Select Data Folder**: Click "Select Data Folder" to specify your data directory containing Excel files
+2. **Select Part Number**: Choose from the dropdown list of available part numbers
+3. **Select Inspection Item**: Choose the inspection item to analyze
+4. **Choose Analysis Type**:
+   - **Batch Analysis**: For individual cavity analysis or average of all cavities
+   - **Cavity Comparison**: Compare capability across different cavities
+   - **Group Trend**: View trends of min/max/average values across batches
+5. **For Batch Analysis**: Optionally specify a cavity number (leave blank for Xbar-R charts analyzing all cavities)
+6. **Set Batch Range**: Select the start and end batches for your analysis
+7. **Generate Analysis**: Click "Generate Analysis" to run the analysis
+8. **Export Results**: Export results to Excel using the "Export to Excel" button
+
+### Analysis Types Explained
+
+#### 1. Batch Analysis
+- **Single Cavity Mode**: Performs Individual-MR analysis for a specific cavity
+- **All Cavities Mode**: Performs Xbar-R analysis using all cavities (when no cavity is specified)
+- Provides capability indices (Cpk, Ppk), control charts, and Western Electric rule violations
+
+#### 2. Cavity Comparison
+- Compares Cpk values across different cavities
+- Shows average values comparison against specifications
+- Helps identify underperforming cavities
+
+#### 3. Group Trend
+- Shows min/max/average values across batches
+- Helps identify process trends over time
+
+### Data Format Requirements
+
+Your Excel data files should have:
+- Part number as the filename (e.g., "PART001.xlsx")
+- Inspection items as sheet names
+- Specification limits in cells B2 (Target), C2 (USL), D2 (LSL)
+- Cavity columns identified by containing "穴" in the column header
+- Batch identifiers in the first column
+
+### Troubleshooting
+
+1. **Port Issues**: If the default ports (8000 for backend, 5173 for frontend) are busy, the applications will automatically use the next available ports. Check the terminal output for the correct URLs.
+
+2. **Data Directory**: Make sure to select a valid data directory containing properly formatted Excel files.
+
+3. **Dependency Issues**: If you encounter dependency issues, try reinstalling:
+   - Backend: `pip install -r requirements.txt`
+   - Frontend: `npm install`
+
+4. **CORS Issues**: The backend is configured to allow all origins for development purposes.
+
 ## Moving to Another Location
 
 The web-based SPC analysis tool is designed to be portable. To move it to another location:
