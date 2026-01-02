@@ -254,11 +254,11 @@ function App() {
         // Local Analysis
         let result;
         if (analysisType === 'batch') {
-          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity);
+          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity, startBatch, endBatch);
         } else if (analysisType === 'cavity') {
-          result = spcEngine.analyzeCavity(workbook, selectedItem);
+          result = spcEngine.analyzeCavity(workbook, selectedItem, startBatch, endBatch);
         } else if (analysisType === 'group') {
-          result = spcEngine.analyzeGroup(workbook, selectedItem);
+          result = spcEngine.analyzeGroup(workbook, selectedItem, startBatch, endBatch);
         }
 
         if (result.error) throw new Error(result.error);

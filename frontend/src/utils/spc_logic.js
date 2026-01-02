@@ -95,7 +95,7 @@ export class SPCAnalysis {
     }
 
     // 1. Batch Analysis (I-MR or Xbar-R)
-    analyzeBatch(workbook, sheetName, cavityName = null) {
+    analyzeBatch(workbook, sheetName, cavityName = null, startBatch = null, endBatch = null) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -126,6 +126,10 @@ export class SPCAnalysis {
         let rangeValues = []; // For Xbar: ranges.
 
         for (let i = 1; i < json.length; i++) {
+            // Range Filter
+            if (startBatch !== null && i < Number(startBatch)) continue;
+            if (endBatch !== null && i > Number(endBatch)) continue;
+
             const row = json[i];
             const batchName = row[0] || `Batch ${i}`;
 
@@ -237,7 +241,7 @@ export class SPCAnalysis {
     }
 
     // 2. Cavity Comparison
-    analyzeCavity(workbook, sheetName) {
+    analyzeCavity(workbook, sheetName, startBatch = null, endBatch = null) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -252,6 +256,10 @@ export class SPCAnalysis {
                 // Calculate stats for this cavity
                 const vals = [];
                 for (let i = 1; i < json.length; i++) {
+                    // Range Filter
+                    if (startBatch !== null && i < Number(startBatch)) continue;
+                    if (endBatch !== null && i > Number(endBatch)) continue;
+
                     const v = parseFloat(json[i][idx]);
                     if (!isNaN(v)) vals.push(v);
                 }
@@ -284,7 +292,7 @@ export class SPCAnalysis {
     }
 
     // 3. Group Trend
-    analyzeGroup(workbook, sheetName) {
+    analyzeGroup(workbook, sheetName, startBatch = null, endBatch = null) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -299,6 +307,10 @@ export class SPCAnalysis {
         const groups = [];
 
         for (let i = 1; i < json.length; i++) {
+            // Range Filter
+            if (startBatch !== null && i < Number(startBatch)) continue;
+            if (endBatch !== null && i > Number(endBatch)) continue;
+
             const row = json[i];
             const batchIdx = row[0] || i;
             const vals = [];
