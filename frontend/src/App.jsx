@@ -491,7 +491,7 @@ function App() {
                 <div className="stat-item">
                   <span className="stat-label">Target / USL / LSL</span>
                   <span className="stat-value" style={{ fontSize: '1rem' }}>
-                    {data.specs?.target != null ? parseFloat(data.specs.target).toString() : 0} / {data.specs?.usl != null ? parseFloat(data.specs.usl).toString() : 0} / {data.specs?.lsl != null ? parseFloat(data.specs.lsl).toString() : 0}
+                    {data.specs?.target != null ? parseFloat(data.specs.target).toFixed(data.specs.decimals !== undefined ? data.specs.decimals : 2) : '-'} / {data.specs?.usl != null ? parseFloat(data.specs.usl).toFixed(data.specs.decimals !== undefined ? data.specs.decimals : 2) : '-'} / {data.specs?.lsl != null ? parseFloat(data.specs.lsl).toFixed(data.specs.decimals !== undefined ? data.specs.decimals : 2) : '-'}
                   </span>
                 </div>
               </div>

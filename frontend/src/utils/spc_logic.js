@@ -10,6 +10,22 @@ const getStdDev = (data, isSample = true) => {
     return Math.sqrt(sumDiffSq / (data.length - (isSample ? 1 : 0)));
 };
 
+// Helper: Get max decimal places from array
+const getPrecision = (data) => {
+    let max = 0;
+    for (const val of data) {
+        if (!val) continue;
+        const str = String(val);
+        if (str.includes('.')) {
+            const dec = str.split('.')[1].length;
+            if (dec > max) max = dec;
+        }
+    }
+    return Math.min(max, 6); // Limit to reasonable 6 decimals
+};
+
+
+
 // d2 constant for n=2 (Moving Range)
 const D2 = 1.128;
 
@@ -236,7 +252,10 @@ export class SPCAnalysis {
                 r_values: rangeValues.length ? rangeValues : [],
                 r_labels: labels
             },
-            specs
+            specs: {
+                ...specs,
+                decimals: getPrecision(values)
+            }
         };
     }
 
@@ -287,7 +306,10 @@ export class SPCAnalysis {
 
         return {
             cavities: cavityData,
-            specs
+            specs: {
+                ...specs,
+                decimals: getPrecision(cavityData.map(c => c.mean)) // Use mean precision as proxy
+            }
         };
     }
 
@@ -331,7 +353,10 @@ export class SPCAnalysis {
 
         return {
             groups,
-            specs
+            specs: {
+                ...specs,
+                decimals: 2
+            }
         };
     }
 }
