@@ -12,6 +12,7 @@ This is a standalone web-based Statistical Process Control (SPC) analysis tool t
 - Capability analysis (Cpk, Ppk)
 - Western Electric Rules violation detection
 - Export to Excel functionality
+- **Web/Offline Mode**: Run directly in the browser by uploading Excel files (no backend required for basic analysis)
 
 ## System Requirements
 - Node.js (v14 or later)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { SPCAnalysis } from './utils/spc_logic';
 
 const API_BASE = '/api';
 
@@ -16,14 +17,20 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSpecLimits, setShowSpecLimits] = useState(true);  // New state for spec limits visibility
-  
+
   const [batches, setBatches] = useState([]);
   const [startBatch, setStartBatch] = useState('');
   const [endBatch, setEndBatch] = useState('');
-  
+
+  // Local Mode State
+  const [isLocalMode, setIsLocalMode] = useState(false);
+  const [localFiles, setLocalFiles] = useState([]); // Array of File objects
+  const [workbook, setWorkbook] = useState(null); // Current active workbook
+  const [spcEngine] = useState(new SPCAnalysis());
+
   // State for cavity information
   const [cavityInfo, setCavityInfo] = useState(null);
-  
+
   // Function to reset all states to initial values
   const resetAll = () => {
     // Clear all selections
@@ -36,13 +43,41 @@ function App() {
     setStartBatch('');
     setEndBatch('');
     setShowSpecLimits(true);
-    
+
     // Clear data lists to ensure logical dependencies
     setProducts([]);
     setItems([]);
     setBatches([]);
   };
-  
+
+  // Check Backend Status on Mount
+  useEffect(() => {
+    axios.get(`${API_BASE}/products`)
+      .then(() => setIsLocalMode(false))
+      .catch(() => {
+        console.log("Backend unreachable. Switching to Local Mode.");
+        setIsLocalMode(true);
+      });
+  }, []);
+
+  // Handler for Local File Upload
+  const handleLocalFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setLocalFiles(files);
+    const productNames = files.map(f => f.name.replace('.xlsx', ''));
+    setProducts(productNames);
+
+    // Select first one by default
+    if (productNames.length > 0) {
+      setSelectedProduct(productNames[0]);
+    }
+  };
+
+  // Helper to get file by product name
+  const getLocalFile = (pName) => localFiles.find(f => f.name.includes(pName));
+
   // Function to select data directory
   const selectDataDirectory = async () => {
     try {
@@ -51,19 +86,19 @@ function App() {
       const directoryPath = prompt(
         "Please enter the absolute path to your data directory (e.g., C:/path/to/your/data/folder):\n\nNote: The folder should contain your Excel data files."
       );
-      
+
       if (directoryPath) {
         const response = await axios.post(`${API_BASE}/set-data-directory`, {
           directory: directoryPath
         });
-        
+
         if (response.data.status === 'success') {
           alert(response.data.message);
           // Reset the form to refresh the product list
           setSelectedProduct('');
           setProducts([]);
           setData(null);
-          
+
           // Reload products
           axios.get(`${API_BASE}/products`)
             .then(res => {
@@ -79,10 +114,10 @@ function App() {
       setError('Failed to set data directory: ' + err.message);
     }
   };
-  
+
   const handleExportExcel = async () => {
     if (!data || !selectedProduct || !selectedItem) return;
-    
+
     try {
       const response = await axios.post(`${API_BASE}/export/excel`, {
         product: selectedProduct,
@@ -98,7 +133,7 @@ function App() {
         },
         responseType: 'blob'  // Important: receive response as blob
       });
-      
+
       // Create a download link for the Excel file
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -123,17 +158,30 @@ function App() {
   // Fetch batches and set range defaults
   useEffect(() => {
     if (selectedProduct && selectedItem) {
-      axios.get(`${API_BASE}/batches?product=${selectedProduct}&item=${selectedItem}`)
-        .then(res => {
-          setBatches(res.data.batches);
-          if (res.data.batches.length > 0) {
-            setStartBatch(res.data.batches[0].index);
-            setEndBatch(res.data.batches[res.data.batches.length - 1].index);
+      if (isLocalMode) {
+        // Local Mode: Get batches from workbook
+        if (workbook) {
+          const b = spcEngine.getBatches(workbook, selectedItem);
+          setBatches(b);
+          if (b.length > 0) {
+            setStartBatch(b[0].index);
+            setEndBatch(b[b.length - 1].index);
           }
-        })
-        .catch(err => setError('Failed to load batches'));
+        }
+      } else {
+        // Server Mode
+        axios.get(`${API_BASE}/batches?product=${selectedProduct}&item=${selectedItem}`)
+          .then(res => {
+            setBatches(res.data.batches);
+            if (res.data.batches.length > 0) {
+              setStartBatch(res.data.batches[0].index);
+              setEndBatch(res.data.batches[res.data.batches.length - 1].index);
+            }
+          })
+          .catch(err => setError('Failed to load batches'));
+      }
     }
-  }, [selectedProduct, selectedItem]);
+  }, [selectedProduct, selectedItem, isLocalMode, workbook]);
 
   // Clear data when selection changes to prevent stale UI
   useEffect(() => {
@@ -144,34 +192,53 @@ function App() {
   // Items load on product change
   useEffect(() => {
     if (selectedProduct) {
-      axios.get(`${API_BASE}/items?product=${selectedProduct}`)
-        .then(res => {
-          setItems(res.data.items);
-          if (res.data.items.length > 0) {
-            setSelectedItem(res.data.items[0]);
-          }
-        })
-        .catch(err => setError('Failed to load items'));
+      if (isLocalMode) {
+        // Local Mode: Parse file and get sheets
+        const file = getLocalFile(selectedProduct);
+        if (file) {
+          spcEngine.parseExcel(file).then(wb => {
+            setWorkbook(wb);
+            const items = spcEngine.getInspectionItems(wb);
+            setItems(items);
+            if (items.length > 0) setSelectedItem(items[0]);
+          }).catch(err => setError("Failed to parse local file: " + err));
+        }
+      } else {
+        // Server Mode
+        axios.get(`${API_BASE}/items?product=${selectedProduct}`)
+          .then(res => {
+            setItems(res.data.items);
+            if (res.data.items.length > 0) {
+              setSelectedItem(res.data.items[0]);
+            }
+          })
+          .catch(err => setError('Failed to load items'));
+      }
     }
-  }, [selectedProduct]);
-  
+  }, [selectedProduct, isLocalMode]);
+
   // Fetch cavity information when item is selected
   useEffect(() => {
     if (selectedProduct && selectedItem) {
-      axios.get(`${API_BASE}/cavity-info?product=${selectedProduct}&item=${selectedItem}`)
-        .then(res => {
-          setCavityInfo(res.data);
-        })
-        .catch(err => {
-          // It's OK if cavity info fails, we just won't display it
-          // Log the error for debugging but don't show an error message to user
-          console.log(`Cavity info not available: ${err.message}`);
-          setCavityInfo(null);
-        });
+      if (isLocalMode) {
+        if (workbook) {
+          const info = spcEngine.getCavityInfo(workbook, selectedItem);
+          setCavityInfo(info);
+        }
+      } else {
+        axios.get(`${API_BASE}/cavity-info?product=${selectedProduct}&item=${selectedItem}`)
+          .then(res => {
+            setCavityInfo(res.data);
+          })
+          .catch(err => {
+            console.log(`Cavity info not available: ${err.message}`);
+            setCavityInfo(null);
+          });
+      }
     } else {
       setCavityInfo(null);
     }
-  }, [selectedProduct, selectedItem]);
+  }, [selectedProduct, selectedItem, isLocalMode, workbook]);
 
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
@@ -182,19 +249,36 @@ function App() {
     const queryParams = `product=${selectedProduct}&item=${selectedItem}&startBatch=${startBatch}&endBatch=${endBatch}`;
 
     try {
-      let endpoint = '';
-      if (analysisType === 'batch') {
-        endpoint = `${API_BASE}/analysis/batch?${queryParams}&cavity=${selectedCavity}`;
-      } else if (analysisType === 'cavity') {
-        endpoint = `${API_BASE}/analysis/cavity?${queryParams}`;
-      } else {
-        endpoint = `${API_BASE}/analysis/group?${queryParams}`;
-      }
+      if (isLocalMode) {
+        if (!workbook) throw new Error("No workbook loaded");
+        // Local Analysis
+        // Note: Local Logic currently only implements simplified I-MR/Batch logic
+        // TODO: Add support for range filtering in spc_logic
+        const result = spcEngine.analyze(workbook, selectedItem, selectedCavity);
+        if (result.error) throw new Error(result.error);
 
-      const res = await axios.get(endpoint);
-      setData(res.data);
+        // Add dummy structure if missing (to match backend format)
+        if (!result.data.r_values) {
+          result.data.r_values = [];
+          result.data.r_labels = [];
+        }
+        setData(result);
+      } else {
+        // Server Analysis
+        let endpoint = '';
+        if (analysisType === 'batch') {
+          endpoint = `${API_BASE}/analysis/batch?${queryParams}&cavity=${selectedCavity}`;
+        } else if (analysisType === 'cavity') {
+          endpoint = `${API_BASE}/analysis/cavity?${queryParams}`;
+        } else {
+          endpoint = `${API_BASE}/analysis/group?${queryParams}`;
+        }
+
+        const res = await axios.get(endpoint);
+        setData(res.data);
+      }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Analysis failed');
+      setError(err.response?.data?.detail || err.message || 'Analysis failed');
     } finally {
       setLoading(false);
     }
@@ -222,17 +306,31 @@ function App() {
           <h1 style={{ fontSize: '1.2rem' }}>QIP SPC Analyst</h1>
         </div>
 
-        <button onClick={selectDataDirectory}>
-          Select Data Folder
+        {isLocalMode && (
+          <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#fff3cd', border: '1px solid #ffecb5', borderRadius: '4px', fontSize: '0.8rem', color: '#856404' }}>
+            <strong>Offline Mode</strong><br />Running in browser (Serverless).
+          </div>
+        )}
+
+        <input
+          type="file"
+          multiple
+          accept=".xlsx"
+          style={{ display: 'none' }}
+          id="fileInput"
+          onChange={handleLocalFileUpload}
+        />
+        <button onClick={isLocalMode ? () => document.getElementById('fileInput').click() : selectDataDirectory}>
+          {isLocalMode ? 'Select Excel Files' : 'Select Data Folder'}
         </button>
-        
+
         {/* Show message if no products are available */}
         {products.length === 0 && (
           <div style={{ padding: '1rem', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '1rem', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>Please select a data folder to load products</p>
           </div>
         )}
-        
+
         {/* Only show Part Number dropdown if products are loaded */}
         {products.length > 0 && (
           <div className="input-group">
@@ -252,7 +350,7 @@ function App() {
               <option value="">Select Item...</option>
               {items.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
-            
+
             {/* Display cavity information if available */}
             {cavityInfo && cavityInfo.total_cavities > 0 && (
               <div style={{
@@ -264,7 +362,7 @@ function App() {
                 fontSize: '0.8rem',
                 color: '#0d47a1'
               }}>
-                <strong>Cavities:</strong> {cavityInfo.total_cavities} | 
+                <strong>Cavities:</strong> {cavityInfo.total_cavities} |
                 <strong>Names:</strong> {cavityInfo.cavity_names.join(', ')}
               </div>
             )}
@@ -315,7 +413,7 @@ function App() {
             />
           </div>
         )}
-        
+
         {analysisType === 'batch' && selectedProduct && selectedItem && (
           <div className="input-group">
             <label>
@@ -332,13 +430,13 @@ function App() {
         <button onClick={handleRunAnalysis} disabled={loading || !selectedProduct}>
           {loading ? 'Processing...' : 'Generate Analysis'}
         </button>
-        
+
         {data && (
           <button onClick={() => handleExportExcel()} disabled={loading}>
             Export to Excel
           </button>
         )}
-        
+
         <button onClick={resetAll}>
           Reset
         </button>
@@ -394,8 +492,8 @@ function App() {
 
               {/* Handle violations for both Individual-MR and Xbar-R charts */}
               {(data.violations && Array.isArray(data.violations) && data.violations.length > 0) ||
-               (data.violations && data.violations.xbar_violations && data.violations.xbar_violations.length > 0) ||
-               (data.violations && data.violations.r_violations && data.violations.r_violations.length > 0) ? (
+                (data.violations && data.violations.xbar_violations && data.violations.xbar_violations.length > 0) ||
+                (data.violations && data.violations.r_violations && data.violations.r_violations.length > 0) ? (
                 <div className="violation-list">
                   <h4 style={{ margin: '1rem 0 0.5rem 0' }}>SPC Violations Detected:</h4>
                   {/* Show Individual-MR violations */}
@@ -425,17 +523,17 @@ function App() {
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Xbar (Avg)',
-                        line: { 
-                          color: 'var(--primary-color)', 
-                          width: 3 
+                        line: {
+                          color: 'var(--primary-color)',
+                          width: 3
                         },
-                        marker: { 
+                        marker: {
                           color: data.data.values.map(val => {
-                            if (data.control_limits && 
-                                data.control_limits.ucl_xbar && 
-                                data.control_limits.lcl_xbar &&
-                                ((val > data.control_limits.ucl_xbar) || 
-                                 (val < data.control_limits.lcl_xbar))) {
+                            if (data.control_limits &&
+                              data.control_limits.ucl_xbar &&
+                              data.control_limits.lcl_xbar &&
+                              ((val > data.control_limits.ucl_xbar) ||
+                                (val < data.control_limits.lcl_xbar))) {
                               return 'red'; // Out of control points in red
                             }
                             return 'var(--primary-color)'; // In control points in blue
@@ -458,17 +556,17 @@ function App() {
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Measurement',
-                        line: { 
-                          color: 'var(--primary-color)', 
-                          width: 3 
+                        line: {
+                          color: 'var(--primary-color)',
+                          width: 3
                         },
-                        marker: { 
+                        marker: {
                           color: data.data.values.map(val => {
-                            if (data.control_limits && 
-                                data.control_limits.ucl_x && 
-                                data.control_limits.lcl_x &&
-                                ((val > data.control_limits.ucl_x) || 
-                                 (val < data.control_limits.lcl_x))) {
+                            if (data.control_limits &&
+                              data.control_limits.ucl_x &&
+                              data.control_limits.lcl_x &&
+                              ((val > data.control_limits.ucl_x) ||
+                                (val < data.control_limits.lcl_x))) {
                               return 'red'; // Out of control points in red
                             }
                             return 'var(--primary-color)'; // In control points in blue
@@ -511,15 +609,15 @@ function App() {
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Range (R)',
-                        line: { 
-                          color: '#7030a0', 
-                          width: 2 
+                        line: {
+                          color: '#7030a0',
+                          width: 2
                         },
-                        marker: { 
+                        marker: {
                           color: data.data.r_values.map(val => {
-                            if (data.control_limits && 
-                                data.control_limits.ucl_r && 
-                                val > data.control_limits.ucl_r) {
+                            if (data.control_limits &&
+                              data.control_limits.ucl_r &&
+                              val > data.control_limits.ucl_r) {
                               return 'red'; // Out of control points in red
                             }
                             return '#7030a0'; // In control points in purple
@@ -538,15 +636,15 @@ function App() {
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'Moving Range',
-                        line: { 
-                          color: '#7030a0', 
-                          width: 2 
+                        line: {
+                          color: '#7030a0',
+                          width: 2
                         },
-                        marker: { 
+                        marker: {
                           color: data.data.mr_values.map(val => {
-                            if (data.control_limits && 
-                                data.control_limits.ucl_mr && 
-                                val > data.control_limits.ucl_mr) {
+                            if (data.control_limits &&
+                              data.control_limits.ucl_mr &&
+                              val > data.control_limits.ucl_mr) {
                               return 'red'; // Out of control points in red
                             }
                             return '#7030a0'; // In control points in purple
