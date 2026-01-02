@@ -263,8 +263,8 @@ function App() {
 
         if (result.error) throw new Error(result.error);
 
-        // Add dummy structure if missing (to match backend format)
-        if (!result.data.r_values) {
+        // Add dummy structure if missing (to match backend format) for batch analysis
+        if (result.data && !result.data.r_values) {
           result.data.r_values = [];
           result.data.r_labels = [];
         }
