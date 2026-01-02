@@ -252,9 +252,15 @@ function App() {
       if (isLocalMode) {
         if (!workbook) throw new Error("No workbook loaded");
         // Local Analysis
-        // Note: Local Logic currently only implements simplified I-MR/Batch logic
-        // TODO: Add support for range filtering in spc_logic
-        const result = spcEngine.analyze(workbook, selectedItem, selectedCavity);
+        let result;
+        if (analysisType === 'batch') {
+          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity);
+        } else if (analysisType === 'cavity') {
+          result = spcEngine.analyzeCavity(workbook, selectedItem);
+        } else if (analysisType === 'group') {
+          result = spcEngine.analyzeGroup(workbook, selectedItem);
+        }
+
         if (result.error) throw new Error(result.error);
 
         // Add dummy structure if missing (to match backend format)
