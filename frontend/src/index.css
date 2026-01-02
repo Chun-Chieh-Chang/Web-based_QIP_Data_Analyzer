@@ -34,6 +34,7 @@ body {
   gap: 1.5rem;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
   z-index: 10;
+  overflow-y: auto;
 }
 
 .main-content {
