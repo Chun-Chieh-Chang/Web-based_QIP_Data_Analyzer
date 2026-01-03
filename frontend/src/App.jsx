@@ -673,19 +673,34 @@ function App() {
                       <li><strong>MR 圖 (單穴分析)</strong>: 反映「批次間」的跳動幅度。MR 異常代表製程發生了連續性的突發變動。</li>
                     </ul>
                   </li>
-                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越集中且越不容易超出規格。理想應 <code>&gt; 1.33</code>。
-                    <div style={{ marginTop: '0.8rem', padding: '0.8rem', backgroundColor: '#fff', border: '1px solid #e6f7ff', borderRadius: '4px', fontSize: '0.85rem' }}>
-                      <div style={{ fontWeight: 'bold', color: '#0050b3', marginBottom: '0.4rem' }}>公式參考 (Formula Reference):</div>
-                      <div style={{ marginBottom: '0.3rem' }}><code>Cpk = min[ (USL - μ) / 3σ_within, (μ - LSL) / 3σ_within ]</code></div>
-                      <div style={{ marginBottom: '0.5rem' }}><code>Ppk = min[ (USL - μ) / 3σ_overall, (μ - LSL) / 3σ_overall ]</code></div>
-                      <div style={{ color: '#666', fontSize: '0.8rem' }}>
-                        • <strong>μ</strong>: 平均值 (Process Mean)<br />
-                        • <strong>σ_within</strong>: 組內變異 (Short-term variation, derived from R̄ or MR̄)<br />
-                        • <strong>σ_overall</strong>: 整體變異 (Long-term variation, calculated from all data points)
-                      </div>
-                    </div>
+                  <li><strong>製程能力 (Capability Indices)</strong>:
+                    <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
+                      <li><strong>Cpk (製程能力指數)</strong>: 衡量「短期」穩定性。它只考慮組內變異，反映機台在最佳穩定狀態下的潛力。</li>
+                      <li><strong>Ppk (製程性能指數)</strong>: 衡量「長期」表現。它包含所有批次間的波動（如溫濕度、材料商更換），是客戶實際收到的品質。</li>
+                      <li><strong>解讀點</strong>: 若 <code>Cpk &gt;&gt; Ppk</code>，代表您的製程本身沒問題，但「批次與批次間」的控制不穩定，需檢查材料一致性或環境因素。</li>
+                    </ul>
                   </li>
                 </ul>
+                <div style={{ marginTop: '1rem', padding: '0.8rem', backgroundColor: '#fff', border: '1px solid #bae7ff', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 'bold', color: '#0050b3', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Settings size={14} /> 統計公式與參數 (Statistical Formulas)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ borderRight: '1px border #eee', paddingRight: '1rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Cpk 公式 (Short-term)</div>
+                      <code>min[ (USL-μ)/3σw, (μ-LSL)/3σw ]</code>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Ppk 公式 (Long-term)</div>
+                      <code>min[ (USL-μ)/3σo, (μ-LSL)/3σo ]</code>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '0.6rem', borderTop: '1px solid #f0f0f0', paddingTop: '0.4rem', color: '#666', fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                    <span><strong>μ</strong>: 平均值</span>
+                    <span><strong>σw (Within)</strong>: 組內標準差 (R̄/d2)</span>
+                    <span><strong>σo (Overall)</strong>: 整體標準差 (S)</span>
+                  </div>
+                </div>
               </div>
             </div>
 
