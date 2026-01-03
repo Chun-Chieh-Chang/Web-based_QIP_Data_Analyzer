@@ -216,14 +216,16 @@ function App() {
             detailData.push(row);
           });
         } else if (analysisType === 'cavity' && data.cavities) {
+          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
           detailData.push(["Cavity Name", "Mean", "Cpk"]);
           data.cavities.forEach(c => {
-            detailData.push([c.cavity, c.mean, c.cpk]);
+            detailData.push([c.cavity, c.mean?.toFixed(dec), c.cpk?.toFixed(3)]);
           });
         } else if (analysisType === 'group' && data.groups) {
+          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
           detailData.push(["Batch", "Min", "Max", "Avg"]);
           data.groups.forEach(g => {
-            detailData.push([g.batch, g.min, g.max, g.avg]);
+            detailData.push([g.batch, g.min?.toFixed(dec), g.max?.toFixed(dec), g.avg?.toFixed(dec)]);
           });
         }
 
