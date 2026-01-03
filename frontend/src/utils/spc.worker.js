@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { SPCAnalysis } from './spc_logic';
+import { SPCAnalysis } from './spc_logic.js';
 
 const spcEngine = new SPCAnalysis();
 let cachedWorkbook = null;

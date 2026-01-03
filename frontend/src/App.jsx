@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
 // SPCAnalysis now runs in worker.js
+import SPCWorker from './utils/spc.worker.js?worker';
 
 const API_BASE = '/api';
 
@@ -36,7 +37,7 @@ function App() {
 
   // Initialize Web Worker
   useEffect(() => {
-    workerRef.current = new Worker(new URL('./utils/spc.worker.js', import.meta.url), { type: 'module' });
+    workerRef.current = new SPCWorker();
 
     workerRef.current.onmessage = (e) => {
       const { type, payload } = e.data;
