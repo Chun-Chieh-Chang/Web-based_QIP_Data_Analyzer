@@ -623,21 +623,9 @@ function App() {
           <div style={{ textAlign: 'center', marginTop: '10rem' }}>
             <div className="spinner"></div>
             <p style={{ color: '#666', marginTop: '1rem' }}>Analysing data...</p>
-            {showLongLoading && (
-              <div style={{
-                marginTop: '1.5rem',
-                padding: '1rem',
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffecb5',
-                borderRadius: '8px',
-                color: '#856404',
-                fontWeight: '600',
-                animation: 'fadeIn 0.5s ease-out',
-                display: 'inline-block'
-              }}>
-                處理的資料量較大，請稍後。
-              </div>
-            )}
+            <div className="long-loading-notice">
+              處理的資料量較大，請稍後。
+            </div>
           </div>
         )}
 
