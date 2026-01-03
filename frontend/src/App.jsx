@@ -181,7 +181,8 @@ function App() {
         }
 
         // Write and download
-        XLSX.writeFile(wb, `QIP_Analysis_${selectedProduct}_${selectedItem}.xlsx`);
+        const localFilename = `QIP_${selectedProduct}_${selectedItem}_${analysisType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, localFilename);
       } else {
         // Server Mode: Original Axios implementation
         const response = await axios.post(`${API_BASE}/export/excel`, {
@@ -202,7 +203,8 @@ function App() {
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', response.headers['content-disposition']?.split('filename=')[1] || `QIP_Analysis_${selectedProduct}_${selectedItem}.xlsx`);
+        const serverFilename = response.headers['content-disposition']?.split('filename=')[1] || `QIP_${selectedProduct}_${selectedItem}_${analysisType}.xlsx`;
+        link.setAttribute('download', serverFilename);
         document.body.appendChild(link);
         link.click();
         link.remove();
