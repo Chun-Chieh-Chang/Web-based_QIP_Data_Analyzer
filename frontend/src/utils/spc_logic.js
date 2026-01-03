@@ -71,9 +71,11 @@ export class SPCAnalysis {
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         if (json.length < 2) return [];
 
-        // items usually in first column, starting row 2 (index 1)
+        // Row 1: Header (index 0)
+        // Row 2: Specs (index 1)
+        // Row 3+: Data (index 2 onwards)
         const batches = [];
-        for (let i = 1; i < json.length; i++) {
+        for (let i = 2; i < json.length; i++) {
             if (json[i][0]) {
                 batches.push({ index: i, name: this.formatBatchName(String(json[i][0])) });
             }
@@ -157,7 +159,8 @@ export class SPCAnalysis {
         let rangeValues = []; // For Xbar: ranges.
         let rawSourceData = []; // To track source precision
 
-        for (let i = 1; i < json.length; i++) {
+        // Start from Row 3 (index 2) to skip Header and Specs
+        for (let i = 2; i < json.length; i++) {
             // Range Filter
             if (startBatch !== null && i < Number(startBatch)) continue;
             if (endBatch !== null && i > Number(endBatch)) continue;
@@ -169,7 +172,7 @@ export class SPCAnalysis {
             let rowVals = [];
             targetCols.forEach(idx => {
                 const val = row[idx];
-                const formattedVal = jsonFormatted[i][idx];
+                const formattedVal = jsonFormatted[i] ? jsonFormatted[i][idx] : null;
                 const v = parseFloat(val);
                 if (!isNaN(v)) {
                     rowVals.push(v);
@@ -278,7 +281,8 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceData))
+                // Prioritize Spec precision if defined (>0), otherwise fallback to data
+                decimals: (specs.precision !== undefined && specs.precision > 0) ? specs.precision : getPrecision(rawSourceData)
             }
         };
     }
@@ -302,13 +306,13 @@ export class SPCAnalysis {
             if (h && String(h).includes("穴")) {
                 // Calculate stats for this cavity
                 const vals = [];
-                for (let i = 1; i < json.length; i++) {
+                for (let i = 2; i < json.length; i++) { // Start index 2
                     // Range Filter
                     if (startBatch !== null && i < Number(startBatch)) continue;
                     if (endBatch !== null && i > Number(endBatch)) continue;
                     if (skipIndices.includes(i)) continue;
 
-                    const rawVal = jsonFormatted[i][idx];
+                    const rawVal = jsonFormatted[i] ? jsonFormatted[i][idx] : null;
                     const v = parseFloat(json[i][idx]);
                     if (!isNaN(v)) {
                         vals.push(v);
@@ -343,7 +347,7 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceStrings))
+                decimals: (specs.precision !== undefined && specs.precision > 0) ? specs.precision : getPrecision(rawSourceStrings)
             }
         };
     }
@@ -367,7 +371,7 @@ export class SPCAnalysis {
 
         const groups = [];
 
-        for (let i = 1; i < json.length; i++) {
+        for (let i = 2; i < json.length; i++) { // Start index 2
             // Range Filter
             if (startBatch !== null && i < Number(startBatch)) continue;
             if (endBatch !== null && i > Number(endBatch)) continue;
@@ -377,7 +381,7 @@ export class SPCAnalysis {
             const batchIdx = this.formatBatchName(row[0] || i);
             const vals = [];
             cavityIndices.forEach(idx => {
-                const rawVal = jsonFormatted[i][idx];
+                const rawVal = jsonFormatted[i] ? jsonFormatted[i][idx] : null;
                 const v = parseFloat(row[idx]);
                 if (!isNaN(v)) {
                     vals.push(v);
@@ -401,7 +405,7 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceStrings))
+                decimals: (specs.precision !== undefined && specs.precision > 0) ? specs.precision : getPrecision(rawSourceStrings)
             }
         };
     }
