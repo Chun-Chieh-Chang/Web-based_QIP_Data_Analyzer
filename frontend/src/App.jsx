@@ -368,8 +368,10 @@ function App() {
     setData(null);
 
     // Setup long-loading timer (5 seconds)
+    console.log("Starting analysis timer...");
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     loadingTimerRef.current = setTimeout(() => {
+      console.log("Long loading triggered!");
       setShowLongLoading(true);
     }, 5000);
 
@@ -618,9 +620,10 @@ function App() {
 
         {loading && (
           <div style={{ textAlign: 'center', marginTop: '10rem' }}>
-            <div className="spinner">Analysing data...</div>
+            <div className="spinner"></div>
+            <p style={{ color: '#666', marginTop: '1rem' }}>Analysing data...</p>
             {showLongLoading && (
-              <p style={{ marginTop: '1.5rem', color: 'var(--accent-color)', fontWeight: '600', animation: 'fadeIn 0.5s ease-out' }}>
+              <p style={{ marginTop: '1.5rem', color: 'var(--secondary-color)', fontWeight: '600', animation: 'fadeIn 0.5s ease-out' }}>
                 處理的資料量較大，請稍後。
               </p>
             )}
