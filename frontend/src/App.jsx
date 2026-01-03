@@ -673,7 +673,18 @@ function App() {
                       <li><strong>MR 圖 (單穴分析)</strong>: 反映「批次間」的跳動幅度。MR 異常代表製程發生了連續性的突發變動。</li>
                     </ul>
                   </li>
-                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越集中且越不容易超出規格。理想應 <code>&gt; 1.33</code>。</li>
+                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越集中且越不容易超出規格。理想應 <code>&gt; 1.33</code>。
+                    <div style={{ marginTop: '0.8rem', padding: '0.8rem', backgroundColor: '#fff', border: '1px solid #e6f7ff', borderRadius: '4px', fontSize: '0.85rem' }}>
+                      <div style={{ fontWeight: 'bold', color: '#0050b3', marginBottom: '0.4rem' }}>公式參考 (Formula Reference):</div>
+                      <div style={{ marginBottom: '0.3rem' }}><code>Cpk = min[ (USL - μ) / 3σ_within, (μ - LSL) / 3σ_within ]</code></div>
+                      <div style={{ marginBottom: '0.5rem' }}><code>Ppk = min[ (USL - μ) / 3σ_overall, (μ - LSL) / 3σ_overall ]</code></div>
+                      <div style={{ color: '#666', fontSize: '0.8rem' }}>
+                        • <strong>μ</strong>: 平均值 (Process Mean)<br />
+                        • <strong>σ_within</strong>: 組內變異 (Short-term variation, derived from R̄ or MR̄)<br />
+                        • <strong>σ_overall</strong>: 整體變異 (Long-term variation, calculated from all data points)
+                      </div>
+                    </div>
+                  </li>
                 </ul>
               </div>
             </div>
