@@ -651,6 +651,25 @@ function App() {
                   <span>Process is in statistical control.</span>
                 </div>
               )}
+
+              {/* Interpretation Hint for Batch Analysis */}
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1rem',
+                backgroundColor: '#f0f7ff',
+                borderLeft: '4px solid #1890ff',
+                borderRadius: '4px',
+                fontSize: '0.9rem',
+                lineHeight: '1.6'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1890ff' }}>
+                  <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                  <li><strong>控制圖 (Control Charts)</strong>: 監測過程穩定性。若出現<strong>紅色亮點</strong>，表示該批次存在「特殊原因」變異，應回溯當下生產條件（如：機台參數跳動、材料更換）。</li>
+                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越穩定且集中。理想應 <code>&gt; 1.33</code>。若 <code>Cpk</code> 遠小於 <code>Ppk</code>，代表批次內（模穴間）的變異是主要的改善重點。</li>
+                </ul>
+              </div>
             </div>
 
             <div className="charts-container">
@@ -865,6 +884,22 @@ function App() {
                 style={{ width: '100%' }}
               />
             </div>
+
+            {/* Interpretation Hint for Cavity Comparison */}
+            <div className="card" style={{
+              backgroundColor: '#f6ffed',
+              borderLeft: '4px solid #52c41a',
+              borderRadius: '4px',
+              padding: '1.5rem'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#52c41a' }}>
+                <Layers size={18} /> 穴別比較解讀 (Cavity Insights)
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.95rem', lineHeight: '1.8', color: '#333' }}>
+                <li><strong>識別弱點穴別</strong>: Cpk 較低的穴別（紅色/黃色柱狀圖）是目前品質風險最高的來源。建議針對該模穴進行重點清潔或維護。</li>
+                <li><strong>平均值偏移</strong>: 若所有穴別的平均值均偏向規格限界（USL/LSL），說明模具整體或生產參數存在偏差，通常可透過微調機台循環或射出壓力來改善。</li>
+              </ul>
+            </div>
           </div>
         )}
 
@@ -890,6 +925,25 @@ function App() {
               }}
               style={{ width: '100%' }}
             />
+
+            {/* Interpretation Hint for Group Trend */}
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1rem',
+              backgroundColor: '#fff7e6',
+              borderLeft: '4px solid #fa8c16',
+              borderRadius: '4px',
+              fontSize: '0.95rem',
+              lineHeight: '1.6'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fa8c16' }}>
+                <BarChart3 size={18} /> 群組趨勢解讀 (Trend Analysis)
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#444' }}>
+                <li><strong>模穴間差異</strong>: 紅線（Max/Min）之間的間距代表該批次的「組內變異」。間距越大，代表各穴均勻性越差。</li>
+                <li><strong>批次穩定性</strong>: 藍線（Avg）的波動代表「組間變異」。理想狀態下，藍線應維持在中心位置波動。劇烈的上下跳動可能源於材料批次不穩定或環境溫濕度變化。</li>
+              </ul>
+            </div>
           </div>
         )}
       </main>
