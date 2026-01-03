@@ -150,18 +150,24 @@ function App() {
         // 2. Prepare Detailed Data
         let detailData = [];
         if (analysisType === 'batch' && data.data) {
-          detailData.push(["Batch Label", "Value", "UCL", "LCL", "CL"]);
+          const header = ["Batch Label", "Value", "UCL", "LCL", "CL"];
+          if (showSpecLimits) header.push("Target", "USL", "LSL");
+          detailData.push(header);
+
           const { labels, values } = data.data;
           const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
+          const { target, usl, lsl } = data.specs || {};
 
           labels.forEach((label, i) => {
-            detailData.push([
+            const row = [
               label,
               values[i],
               ucl_x || ucl_xbar,
               lcl_x || lcl_xbar,
               cl_x || cl_xbar
-            ]);
+            ];
+            if (showSpecLimits) row.push(target, usl, lsl);
+            detailData.push(row);
           });
         } else if (analysisType === 'cavity' && data.cavities) {
           detailData.push(["Cavity Name", "Mean", "Cpk"]);
