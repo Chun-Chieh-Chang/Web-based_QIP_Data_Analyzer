@@ -180,12 +180,13 @@ function App() {
         ];
 
         if (analysisType === 'batch' && data.capability) {
-          summaryData.push(["Cpk", data.capability.cpk || data.capability.xbar_cpk, ""]);
-          summaryData.push(["Ppk", data.capability.ppk || data.capability.xbar_ppk, ""]);
-          summaryData.push(["Mean", data.stats?.mean || data.stats?.xbar_mean, ""]);
-          summaryData.push(["Target", data.specs?.target, ""]);
-          summaryData.push(["USL", data.specs?.usl, ""]);
-          summaryData.push(["LSL", data.specs?.lsl, ""]);
+          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
+          summaryData.push(["Cpk", (data.capability.cpk || data.capability.xbar_cpk)?.toFixed(3), ""]);
+          summaryData.push(["Ppk", (data.capability.ppk || data.capability.xbar_ppk)?.toFixed(3), ""]);
+          summaryData.push(["Mean", (data.stats?.mean || data.stats?.xbar_mean)?.toFixed(dec), ""]);
+          summaryData.push(["Target", data.specs?.target?.toFixed(dec), ""]);
+          summaryData.push(["USL", data.specs?.usl?.toFixed(dec), ""]);
+          summaryData.push(["LSL", data.specs?.lsl?.toFixed(dec), ""]);
         }
 
         const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -200,17 +201,18 @@ function App() {
 
           const { labels, values } = data.data;
           const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
-          const { target, usl, lsl } = data.specs || {};
+          const { target, usl, lsl, decimals } = data.specs || {};
+          const dec = decimals !== undefined ? decimals : 4;
 
           labels.forEach((label, i) => {
             const row = [
               label,
-              values[i],
-              ucl_x || ucl_xbar,
-              lcl_x || lcl_xbar,
-              cl_x || cl_xbar
+              values[i]?.toFixed(dec),
+              (ucl_x || ucl_xbar)?.toFixed(dec),
+              (lcl_x || lcl_xbar)?.toFixed(dec),
+              (cl_x || cl_xbar)?.toFixed(dec)
             ];
-            if (showSpecLimits) row.push(target, usl, lsl);
+            if (showSpecLimits) row.push(target?.toFixed(dec), usl?.toFixed(dec), lsl?.toFixed(dec));
             detailData.push(row);
           });
         } else if (analysisType === 'cavity' && data.cavities) {
@@ -607,7 +609,7 @@ function App() {
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">CL (Mean)</span>
-                  <span className="stat-value">{(data.stats?.mean || data.stats?.xbar_mean) != null ? parseFloat(data.stats?.mean || data.stats?.xbar_mean).toFixed(4) : '0.0000'}</span>
+                  <span className="stat-value">{(data.stats?.mean || data.stats?.xbar_mean) != null ? parseFloat(data.stats?.mean || data.stats?.xbar_mean).toFixed(data.specs?.decimals || 4) : '0.0000'}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">Target / USL / LSL</span>

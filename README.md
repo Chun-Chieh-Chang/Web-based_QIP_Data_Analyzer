@@ -13,8 +13,17 @@ This is a standalone web-based Statistical Process Control (SPC) analysis tool t
 - Western Electric Rules violation detection
 - Export to Excel functionality
 - **Web/Offline Mode**: Run directly in the browser by uploading Excel files (no backend required for basic analysis)
+- **High Performance**: Uses Web Workers for background data processing, ensuring a smooth UI even with large datasets.
 
-## System Requirements
+## Recent Updates (2026-01-03)
+- **Automatic Precision Matching**: The output results (Mean, Specs, Control Limits) now automatically match the decimal places found in the source Excel data.
+- **Improved Lot Number Handling**: Automatically removes suffixes from lot numbers (e.g., `160120E-1` becomes `160120E`) for cleaner grouping and labeling.
+- **Batch Exclusion Feature**: Added ability to exclude specific production batches from analysis through interactive checkboxes in the sidebar.
+- **Enhanced Excel Export**: 
+  - Sub-tabs for Summary and Detailed data.
+  - Export filenames now include Part Number, Inspection Item, and Analysis Type.
+  - Option to include Specification Limits in the exported data rows.
+- **Web Worker Integration**: Background processing of large Excel files to prevent browser hanging.
 - Node.js (v14 or later)
 - Python (v3.7 or later)
 - Modern web browser (Chrome, Firefox, Edge, Safari)

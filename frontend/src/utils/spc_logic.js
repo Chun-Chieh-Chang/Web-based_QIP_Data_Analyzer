@@ -14,14 +14,14 @@ const getStdDev = (data, isSample = true) => {
 const getPrecision = (data) => {
     let max = 0;
     for (const val of data) {
-        if (!val) continue;
+        if (val === null || val === undefined || val === '') continue;
         const str = String(val);
         if (str.includes('.')) {
             const dec = str.split('.')[1].length;
             if (dec > max) max = dec;
         }
     }
-    return Math.min(max, 6); // Limit to reasonable 6 decimals
+    return Math.min(max, 10); // Standard SPC rarely goes beyond 10
 };
 
 
@@ -104,14 +104,19 @@ export class SPCAnalysis {
         };
     }
 
-    // Helper to read specs
+    // Help read specs and detect their precision
     getSpecs(json) {
-        if (json.length < 2) return { target: 0, usl: 0, lsl: 0 };
+        if (json.length < 2) return { target: 0, usl: 0, lsl: 0, precision: 0 };
         const row = json[1];
+        const targetRaw = row[1];
+        const uslRaw = row[2];
+        const lslRaw = row[3];
+
         return {
-            target: parseFloat(row[1]) || 0,
-            usl: parseFloat(row[2]) || 0,
-            lsl: parseFloat(row[3]) || 0
+            target: parseFloat(targetRaw) || 0,
+            usl: parseFloat(uslRaw) || 0,
+            lsl: parseFloat(lslRaw) || 0,
+            precision: getPrecision([targetRaw, uslRaw, lslRaw])
         };
     }
 
@@ -145,6 +150,7 @@ export class SPCAnalysis {
         let labels = [];
         let values = [];      // For I-MR: individual values. For Xbar: averages.
         let rangeValues = []; // For Xbar: ranges.
+        let rawSourceData = []; // To track source precision
 
         for (let i = 1; i < json.length; i++) {
             // Range Filter
@@ -157,8 +163,12 @@ export class SPCAnalysis {
 
             let rowVals = [];
             targetCols.forEach(idx => {
-                const v = parseFloat(row[idx]);
-                if (!isNaN(v)) rowVals.push(v);
+                const rawVal = row[idx];
+                const v = parseFloat(rawVal);
+                if (!isNaN(v)) {
+                    rowVals.push(v);
+                    rawSourceData.push(rawVal);
+                }
             });
 
             if (rowVals.length > 0) {
@@ -259,8 +269,10 @@ export class SPCAnalysis {
                 r_labels: labels
             },
             specs: {
-                ...specs,
-                decimals: getPrecision(values)
+                target: specs.target,
+                usl: specs.usl,
+                lsl: specs.lsl,
+                decimals: Math.max(specs.precision, getPrecision(rawSourceData))
             }
         };
     }
