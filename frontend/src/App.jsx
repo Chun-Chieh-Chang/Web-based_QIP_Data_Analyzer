@@ -667,37 +667,37 @@ function App() {
                   <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                  <li><strong>平均管制圖 (Xbar/Individual)</strong>: 監測製程中心趨勢。若出現<strong>紅色亮點</strong>，表示該批次存在「特殊原因」變異，應回溯當下生產條件（如：參數跳動、材料更換）。</li>
-                  <li><strong>全距管制圖 (R/MR)</strong>: 監測變異穩定性。
+                  <li><strong>製程中心趨勢 (Xbar/I Chart)</strong>: 反映熔膠黏度一致性或射出參數穩定度。<strong>紅色異常點</strong>代表「特殊原因變異」，建議檢查<strong>射出壓力切換 (V/P)</strong>、<strong>料溫波動</strong>或<strong>回收料比例</strong>。</li>
+                  <li><strong>全距管制圖 (R/MR Chart)</strong>:
                     <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
-                      <li><strong>R 圖 (全穴分析)</strong>: 反映「模穴間」的均勻度。R 值越高表示各穴尺寸差異越大（模具平衡性差）。</li>
-                      <li><strong>MR 圖 (單穴分析)</strong>: 反映「批次間」的跳動幅度。MR 異常代表製程發生了連續性的突發變動。</li>
+                      <li><strong>R 圖 (模穴平衡性)</strong>: 監測模具各穴填充的均勻度。R 值偏高通常代表<strong>熱流道溫控不均</strong>、<strong>排氣阻塞</strong>或<strong>澆口物理損耗</strong>。</li>
+                      <li><strong>MR 圖 (製程漂移)</strong>: 反映相鄰批次的跳動。異常通常源於<strong>冷卻水溫漂移</strong>或<strong>環境溫濕度</strong>影響。</li>
                     </ul>
                   </li>
-                  <li><strong>製程能力 (Capability Indices)</strong>:
+                  <li><strong>製程能力深度解讀 (Capability Insights)</strong>:
                     <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
-                      <li><strong>Cpk (製程能力指數)</strong>: 衡量「短期」穩定性。它只考慮組內變異，反映機台在最佳穩定狀態下的潛力。</li>
-                      <li><strong>Ppk (製程性能指數)</strong>: 衡量「長期」表現。它包含所有批次間的波動（如溫濕度、材料商更換），是客戶實際收到的品質。</li>
-                      <li><strong>解讀點</strong>: 若 <code>Cpk &gt;&gt; Ppk</code>，代表您的製程本身沒問題，但「批次與批次間」的控制不穩定，需檢查材料一致性或環境因素。</li>
+                      <li><strong>Cpk (製程能力指數)</strong>: 衡量「短期」穩定性，反映機台與模具在當下物理狀態下的最佳潛力。</li>
+                      <li><strong>Ppk (製程性能指數)</strong>: 衡量「長期」表現，涵蓋批次間所有波動。這是客戶收受產品時的最真實數據。</li>
+                      <li><strong>專家建議</strong>: 若 <code>Cpk &gt;&gt; Ppk</code>，代表模穴平衡良好，但<strong>生產穩定性 (Stability Index)</strong> 不佳，應重點控管批次間的工藝一致性。</li>
                     </ul>
                   </li>
                 </ul>
                 <div style={{ marginTop: '1rem', padding: '0.8rem', backgroundColor: '#fff', border: '1px solid #bae7ff', borderRadius: '8px', fontSize: '0.85rem' }}>
                   <div style={{ fontWeight: 'bold', color: '#0050b3', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Settings size={14} /> 統計公式與參數 (Statistical Formulas)
+                    <Settings size={14} /> 核心統計公式與參數 (Statistical Reference)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div style={{ borderRight: '1px border #eee', paddingRight: '1rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Cpk 公式 (Short-term)</div>
+                    <div style={{ paddingRight: '1rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Cpk (Short-term)</div>
                       <code>min[ (USL-μ)/3σw, (μ-LSL)/3σw ]</code>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Ppk 公式 (Long-term)</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888' }}>Ppk (Long-term)</div>
                       <code>min[ (USL-μ)/3σo, (μ-LSL)/3σo ]</code>
                     </div>
                   </div>
                   <div style={{ marginTop: '0.6rem', borderTop: '1px solid #f0f0f0', paddingTop: '0.4rem', color: '#666', fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                    <span><strong>μ</strong>: 平均值</span>
+                    <span><strong>μ</strong>: 製程均值 (Process Mean)</span>
                     <span><strong>σw (Within)</strong>: 組內標準差 (R̄/d2)</span>
                     <span><strong>σo (Overall)</strong>: 整體標準差 (S)</span>
                   </div>
@@ -926,11 +926,11 @@ function App() {
               padding: '1.5rem'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#52c41a' }}>
-                <Layers size={18} /> 穴別比較解讀 (Cavity Insights)
+                <Layers size={18} /> 穴別平衡深度診斷 (Cavity Balance Diagnosis)
               </div>
               <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.95rem', lineHeight: '1.8', color: '#333' }}>
-                <li><strong>識別弱點穴別</strong>: Cpk 較低的穴別（紅色/黃色柱狀圖）是目前品質風險最高的來源。建議針對該模穴進行重點清潔或維護。</li>
-                <li><strong>平均值偏移</strong>: 若所有穴別的平均值均偏向規格限界（USL/LSL），說明模具整體或生產參數存在偏差，通常可透過微調機台循環或射出壓力來改善。</li>
+                <li><strong>精準維護定位</strong>: Cpk 呈現紅色/黃色的特定穴別是品質風險點。應優先檢查該穴的<strong>成品頂出偏擺</strong>、<strong>模穴磨損</strong>或<strong>排氣阻塞</strong>狀況。</li>
+                <li><strong>系統性偏差</strong>: 若所有穴別均勻地偏向規格一側 (USL 或 LSL)，說明是<strong>工藝參數 (Process Settings)</strong> 的問題（如射出壓力不足或保壓時間太短），而非模具物理缺陷。</li>
               </ul>
             </div>
           </div>
@@ -970,11 +970,11 @@ function App() {
               lineHeight: '1.6'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fa8c16' }}>
-                <BarChart3 size={18} /> 群組趨勢解讀 (Trend Analysis)
+                <BarChart3 size={18} /> 製程波動趨勢解讀 (Process Variation Insights)
               </div>
               <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#444' }}>
-                <li><strong>模穴間差異</strong>: 紅線（Max/Min）之間的間距代表該批次的「組內變異」。間距越大，代表各穴均勻性越差。</li>
-                <li><strong>批次穩定性</strong>: 藍線（Avg）的波動代表「組間變異」。理想狀態下，藍線應維持在中心位置波動。劇烈的上下跳動可能源於材料批次不穩定或環境溫濕度變化。</li>
+                <li><strong>組內分散度 (Within-subgroup Variation)</strong>: 紅線 (Max/Min) 的間際反映了模具的<strong>物理一致性</strong>。間距擴大代表多穴填充失衡，或個別模穴噴嘴堵塞。</li>
+                <li><strong>組間飄移度 (Between-subgroup Variation)</strong>: 藍線 (Avg) 的波動反映了<strong>生產環境穩定度</strong>。劇烈波動通常源於環境溫濕度變化、成型循環時間 (Cycle Time) 不穩定或材料批次黏度差異。</li>
               </ul>
             </div>
           </div>
