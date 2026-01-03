@@ -830,6 +830,8 @@ function App() {
                           type: 'scatter',
                           mode: 'lines+markers',
                           name: 'X-bar (均值)',
+                          text: data.data.labels,
+                          hovertemplate: '<b>批號: %{text}</b><br>數值: %{y:.4f}<extra></extra>',
                           line: { color: '#006aff', width: 2.5, shape: 'spline' },
                           marker: {
                             color: data.data.values.map(val => {
@@ -854,6 +856,8 @@ function App() {
                           type: 'scatter',
                           mode: 'lines+markers',
                           name: '單值 (Value)',
+                          text: data.data.labels,
+                          hovertemplate: '<b>批號: %{text}</b><br>數值: %{y:.4f}<extra></extra>',
                           line: { color: '#006aff', width: 2.5 },
                           marker: {
                             color: data.data.values.map(val => {
@@ -899,6 +903,8 @@ function App() {
                           type: 'scatter',
                           mode: 'lines+markers',
                           name: 'R (全距)',
+                          text: data.data.labels,
+                          hovertemplate: '<b>批號: %{text}</b><br>全距: %{y:.4f}<extra></extra>',
                           line: { color: '#64748b', width: 2 },
                           marker: {
                             color: data.data.r_values.map(val => {
@@ -917,6 +923,8 @@ function App() {
                           type: 'scatter',
                           mode: 'lines+markers',
                           name: 'MR',
+                          text: data.data.labels.slice(1),
+                          hovertemplate: '<b>批號: %{text}</b><br>移動全距: %{y:.4f}<extra></extra>',
                           line: { color: '#64748b', width: 2 },
                           marker: {
                             color: data.data.mr_values.map(val => (data.control_limits && data.control_limits.ucl_mr && val > data.control_limits.ucl_mr) ? '#ef4444' : '#64748b'),
