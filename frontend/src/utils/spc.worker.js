@@ -14,6 +14,7 @@ self.onmessage = (e) => {
         try {
             switch (type) {
                 case 'PARSE_EXCEL':
+                    cachedWorkbook = null; // Explicitly clear old workbook to free memory for the new one
                     const { file } = payload;
                     const data = await file.arrayBuffer();
                     cachedWorkbook = XLSX.read(data, { type: 'array' });
