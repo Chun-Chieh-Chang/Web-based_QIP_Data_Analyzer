@@ -666,8 +666,14 @@ function App() {
                   <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                  <li><strong>控制圖 (Control Charts)</strong>: 監測過程穩定性。若出現<strong>紅色亮點</strong>，表示該批次存在「特殊原因」變異，應回溯當下生產條件（如：機台參數跳動、材料更換）。</li>
-                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越穩定且集中。理想應 <code>&gt; 1.33</code>。若 <code>Cpk</code> 遠小於 <code>Ppk</code>，代表批次內（模穴間）的變異是主要的改善重點。</li>
+                  <li><strong>平均管制圖 (Xbar/Individual)</strong>: 監測製程中心趨勢。若出現<strong>紅色亮點</strong>，表示該批次存在「特殊原因」變異，應回溯當下生產條件（如：參數跳動、材料更換）。</li>
+                  <li><strong>全距管制圖 (R/MR)</strong>: 監測變異穩定性。
+                    <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
+                      <li><strong>R 圖 (全穴分析)</strong>: 反映「模穴間」的均勻度。R 值越高表示各穴尺寸差異越大（模具平衡性差）。</li>
+                      <li><strong>MR 圖 (單穴分析)</strong>: 反映「批次間」的跳動幅度。MR 異常代表製程發生了連續性的突發變動。</li>
+                    </ul>
+                  </li>
+                  <li><strong>製程能力 (Capability)</strong>: <code>Cpk</code> 越高代表製程越集中且越不容易超出規格。理想應 <code>&gt; 1.33</code>。</li>
                 </ul>
               </div>
             </div>
