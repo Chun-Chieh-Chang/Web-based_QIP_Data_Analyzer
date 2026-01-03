@@ -25,31 +25,25 @@ const getPrecision = (data) => {
     return Math.min(max, 10);
 };
 
-// Helper to get formatted value from a cell safely without generating a full JSON sheet
-const getCellFormattedValue = (sheet, r, c) => {
-    const cell = sheet[XLSX.utils.encode_cell({ r, c })];
-    if (!cell) return '';
-    return cell.w || (cell.v !== undefined ? String(cell.v) : '');
-};
+// Helper to yield execution to allow Worker to respond to status requests/breathe
+const yieldExecution = () => new Promise(resolve => setTimeout(resolve, 0));
 
 // d2 constant for n=2 (Moving Range)
 const D2 = 1.128;
 
 export class SPCAnalysis {
-    // Helper to format batch name (remove suffix after '-')
     formatBatchName(name) {
         if (typeof name !== 'string') return name;
         return name.split('-')[0];
     }
 
-    // Parse Excel File from Input
     async parseExcel(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(data, { type: 'array', cellNF: true, cellText: true });
                     resolve(workbook);
                 } catch (err) {
                     reject(err);
@@ -60,23 +54,18 @@ export class SPCAnalysis {
         });
     }
 
-    // Get valid inspection items (sheets)
     getInspectionItems(workbook) {
-        const excluded = ["摘要", "Summary", "統計", "說明"];
+        const excluded = ["摘要", "Summary", "統計", "說明", "零件名稱", "PartNumber"];
         return workbook.SheetNames.filter(s =>
             !excluded.includes(s) && !s.includes("分析") && !s.includes("配置")
         );
     }
 
-    // Get Batches for a specific sheet (Memory Efficient)
     getBatches(workbook, sheetName) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return [];
-
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const batches = [];
-
-        // Column A, Row 3 (index 2) onwards
         for (let R = 2; R <= range.e.r; R++) {
             const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
             if (cell && cell.v !== undefined) {
@@ -86,25 +75,18 @@ export class SPCAnalysis {
         return batches;
     }
 
-    // Get Cavity Info (Memory Efficient)
     getCavityInfo(workbook, sheetName) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
-
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const cavityCols = [];
-
-        // Check Row 1 (index 0)
         for (let C = range.s.c; C <= range.e.c; C++) {
             const cell = sheet[XLSX.utils.encode_cell({ r: 0, c: C })];
             if (cell && cell.v !== undefined) {
                 const val = String(cell.v);
-                if (val.includes("穴")) {
-                    cavityCols.push({ name: val, index: C });
-                }
+                if (val.includes("穴")) cavityCols.push({ name: val, index: C });
             }
         }
-
         return {
             total_cavities: cavityCols.length,
             cavity_names: cavityCols.map(c => c.name),
@@ -112,34 +94,28 @@ export class SPCAnalysis {
         };
     }
 
-    // Help read specs and detect their precision from Sheet
     getSpecs(sheet) {
-        const targetCell = sheet['B2']; // B2 is (r=1, c=1)
-        const uslCell = sheet['C2'];    // C2 is (r=1, c=2)
-        const lslCell = sheet['D2'];    // D2 is (r=1, c=3)
-
+        const targetCell = sheet['B2'];
+        const uslCell = sheet['C2'];
+        const lslCell = sheet['D2'];
         const target = targetCell ? parseFloat(targetCell.v) : null;
         const usl = uslCell ? parseFloat(uslCell.v) : null;
         const lsl = lslCell ? parseFloat(lslCell.v) : null;
-
         const specPrecision = Math.max(
-            getPrecision(targetCell ? targetCell.w : null),
-            getPrecision(uslCell ? uslCell.w : null),
-            getPrecision(lslCell ? lslCell.w : null)
+            getPrecision(targetCell ? (targetCell.w || targetCell.v) : null),
+            getPrecision(uslCell ? (uslCell.w || uslCell.v) : null),
+            getPrecision(lslCell ? (lslCell.w || lslCell.v) : null)
         );
-
         return { target, usl, lsl, precision: specPrecision };
     }
 
-    // 1. Batch Analysis (I-MR or Xbar-R) - Memory Optimized
-    analyzeBatch(workbook, sheetName, cavityName = null, startBatch = null, endBatch = null, skipIndices = []) {
+    // 1. Batch Analysis - Memory Optimized & Async-friendly
+    async analyzeBatch(workbook, sheetName, cavityName = null, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
 
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const specs = this.getSpecs(sheet);
-
-        // Find target columns in header row (index 0)
         let targetCols = [];
         let isXbar = false;
 
@@ -147,7 +123,6 @@ export class SPCAnalysis {
             const cell = sheet[XLSX.utils.encode_cell({ r: 0, c: C })];
             if (!cell || cell.v === undefined) continue;
             const h = String(cell.v);
-
             if (cavityName) {
                 if (h === cavityName || (h.includes(cavityName) && h.includes("穴"))) {
                     targetCols = [C];
@@ -166,13 +141,14 @@ export class SPCAnalysis {
         let rangeValues = [];
         let dataMaxPrecision = 0;
 
-        // Process rows from index 2
         for (let R = 2; R <= range.e.r; R++) {
+            // Periodically yield to prevent total UI freeze on large files
+            if (R % 500 === 0) await yieldExecution();
+
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
 
-            // Batch name from Column A
             const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
             const batchName = this.formatBatchName(batchCell ? String(batchCell.v) : `Batch ${R}`);
 
@@ -183,7 +159,9 @@ export class SPCAnalysis {
                     const v = parseFloat(cell.v);
                     if (!isNaN(v)) {
                         rowVals.push(v);
-                        if (cell.w) dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w));
+                        if (cell.w || cell.v !== undefined) {
+                            dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w || cell.v));
+                        }
                     }
                 }
             });
@@ -213,7 +191,6 @@ export class SPCAnalysis {
             const D4_Map = { 2: 3.27, 3: 2.57, 4: 2.28, 5: 2.11, 6: 2.00, 7: 1.92, 8: 1.86, 9: 1.82, 10: 1.78 };
             const D3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0.08, 8: 0.14, 9: 0.18, 10: 0.22 };
             const d2_Map = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
-
             ucl_x = mean + (A2_Map[n] || 0.31) * r_bar;
             lcl_x = mean - (A2_Map[n] || 0.31) * r_bar;
             ucl_r = (D4_Map[n] || 1.78) * r_bar;
@@ -243,32 +220,28 @@ export class SPCAnalysis {
         };
     }
 
-    // 2. Cavity Comparison - Memory Optimized
-    analyzeCavity(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
+    async analyzeCavity(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
-
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const specs = this.getSpecs(sheet);
         let dataMaxPrecision = 0;
         let cavityData = [];
-
-        // Find cavities in Row 1
         for (let C = range.s.c; C <= range.e.c; C++) {
             const headCell = sheet[XLSX.utils.encode_cell({ r: 0, c: C })];
             if (headCell && String(headCell.v).includes("穴")) {
                 const vals = [];
                 for (let R = 2; R <= range.e.r; R++) {
+                    if (R % 1000 === 0) await yieldExecution();
                     if (startBatch !== null && R < Number(startBatch)) continue;
                     if (endBatch !== null && R > Number(endBatch)) continue;
                     if (skipIndices.includes(R)) continue;
-
                     const cell = sheet[XLSX.utils.encode_cell({ r: R, c: C })];
                     if (cell && cell.v !== undefined) {
                         const v = parseFloat(cell.v);
                         if (!isNaN(v)) {
                             vals.push(v);
-                            if (cell.w) dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w));
+                            if (cell.w || cell.v !== undefined) dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w || cell.v));
                         }
                     }
                 }
@@ -282,31 +255,26 @@ export class SPCAnalysis {
                 }
             }
         }
-
         return { cavities: cavityData, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision } };
     }
 
-    // 3. Group Trend - Memory Optimized
-    analyzeGroup(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
+    async analyzeGroup(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
-
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const specs = this.getSpecs(sheet);
         let dataMaxPrecision = 0;
         let cavityIndices = [];
-
         for (let C = range.s.c; C <= range.e.c; C++) {
             const cell = sheet[XLSX.utils.encode_cell({ r: 0, c: C })];
             if (cell && String(cell.v).includes("穴")) cavityIndices.push(C);
         }
-
         const groups = [];
         for (let R = 2; R <= range.e.r; R++) {
+            if (R % 500 === 0) await yieldExecution();
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
-
             const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
             const batchName = this.formatBatchName(batchCell ? String(batchCell.v) : `Batch ${R}`);
             const rowVals = [];
@@ -316,21 +284,14 @@ export class SPCAnalysis {
                     const v = parseFloat(cell.v);
                     if (!isNaN(v)) {
                         rowVals.push(v);
-                        if (cell.w) dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w));
+                        if (cell.w || cell.v !== undefined) dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w || cell.v));
                     }
                 }
             });
-
             if (rowVals.length > 0) {
-                groups.push({
-                    batch: batchName,
-                    min: Math.min(...rowVals),
-                    max: Math.max(...rowVals),
-                    avg: getMean(rowVals)
-                });
+                groups.push({ batch: batchName, min: Math.min(...rowVals), max: Math.max(...rowVals), avg: getMean(rowVals) });
             }
         }
-
         return { groups, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision } };
     }
 }

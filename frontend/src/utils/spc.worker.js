@@ -23,7 +23,7 @@ self.onmessage = (e) => {
 
                 case 'GET_PRODUCTS':
                     if (!cachedWorkbook) throw new Error("No workbook loaded");
-                    const products = spcEngine.getProducts(cachedWorkbook);
+                    const products = spcEngine.getInspectionItems(cachedWorkbook);
                     self.postMessage({ type: 'PRODUCTS_LOADED', payload: { products } });
                     break;
 
@@ -48,11 +48,11 @@ self.onmessage = (e) => {
 
                     let result;
                     if (analysisType === 'batch') {
-                        result = spcEngine.analyzeBatch(cachedWorkbook, selectedItem, selectedCavity, startBatch, endBatch, excludedBatches);
+                        result = await spcEngine.analyzeBatch(cachedWorkbook, selectedItem, selectedCavity, startBatch, endBatch, excludedBatches);
                     } else if (analysisType === 'cavity') {
-                        result = spcEngine.analyzeCavity(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
+                        result = await spcEngine.analyzeCavity(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
                     } else if (analysisType === 'group') {
-                        result = spcEngine.analyzeGroup(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
+                        result = await spcEngine.analyzeGroup(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
                     }
 
                     if (result.error) throw new Error(result.error);

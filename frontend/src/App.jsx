@@ -106,12 +106,14 @@ function App() {
   useEffect(() => {
     let interval;
     if (loading) {
-      setLoadingSeconds(0);
+      // Don't reset to 0 here if we want to preserve the start time
       interval = setInterval(() => {
         setLoadingSeconds(s => s + 1);
       }, 1000);
     } else {
-      setLoadingSeconds(0);
+      // Delay reset slightly to let user see final time
+      const timeout = setTimeout(() => setLoadingSeconds(0), 500);
+      return () => clearTimeout(timeout);
     }
     return () => {
       if (interval) clearInterval(interval);
