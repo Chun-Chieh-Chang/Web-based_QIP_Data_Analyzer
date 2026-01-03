@@ -205,9 +205,10 @@ export class SPCAnalysis {
         const cpk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * within_std), (mean - specs.lsl) / (3 * within_std)) : null;
         const ppk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * overall_std), (mean - specs.lsl) / (3 * overall_std)) : null;
 
-        // --- NEW: Detect Violations (Out of Control Points) ---
+        // --- Detect Violations (Out of Control Points) ---
         const xbar_violations = [];
         const r_violations = [];
+        const current_r_values = isXbar ? rangeValues : mr;
 
         values.forEach((v, i) => {
             if (v > ucl_x || v < lcl_x) {
@@ -215,7 +216,7 @@ export class SPCAnalysis {
             }
         });
 
-        r_values.forEach((v, i) => {
+        current_r_values.forEach((v, i) => {
             if (v > ucl_r || v < lcl_r) {
                 r_violations.push(`${isXbar ? labels[i] : labels[i + 1]}: Range (${v.toFixed(dataMaxPrecision)}) out of control limits`);
             }
