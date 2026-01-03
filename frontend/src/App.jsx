@@ -35,7 +35,6 @@ function App() {
   // Web Worker Ref
   const workerRef = useRef(null);
   const [showLongLoading, setShowLongLoading] = useState(false);
-  const loadingTimerRef = useRef(null);
 
   // Initialize Web Worker
   useEffect(() => {
@@ -64,13 +63,11 @@ function App() {
           }
           break;
         case 'ANALYSIS_SUCCESS':
-          if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
           setShowLongLoading(false);
           setData(payload.result);
           setLoading(false);
           break;
         case 'ERROR':
-          if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
           setShowLongLoading(false);
           setError(payload.message);
           setLoading(false);
@@ -82,7 +79,6 @@ function App() {
 
     return () => {
       if (workerRef.current) workerRef.current.terminate();
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     };
   }, []);
 
@@ -105,6 +101,21 @@ function App() {
     setBatches([]);
     setExcludedBatches([]);
   };
+
+  // Track loading duration to show a notice for large datasets
+  useEffect(() => {
+    let timer;
+    if (loading) {
+      timer = setTimeout(() => {
+        setShowLongLoading(true);
+      }, 5000);
+    } else {
+      setShowLongLoading(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading]);
 
   // Check Backend Status on Mount
   useEffect(() => {
@@ -367,14 +378,6 @@ function App() {
     setError('');
     setData(null);
 
-    // Setup long-loading timer (5 seconds)
-    console.log("Starting analysis timer...");
-    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-    loadingTimerRef.current = setTimeout(() => {
-      console.log("Long loading triggered!");
-      setShowLongLoading(true);
-    }, 5000);
-
     const queryParams = `product=${selectedProduct}&item=${selectedItem}&startBatch=${startBatch}&endBatch=${endBatch}`;
 
     try {
@@ -407,12 +410,10 @@ function App() {
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Analysis failed');
       setLoading(false);
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setShowLongLoading(false);
     } finally {
       if (!isLocalMode) {
         setLoading(false);
-        if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
         setShowLongLoading(false);
       }
     }
@@ -589,7 +590,7 @@ function App() {
         )}
 
         <button onClick={handleRunAnalysis} disabled={loading || !selectedProduct}>
-          {loading ? 'Processing...' : 'Generate Analysis'}
+          {loading ? (showLongLoading ? '處理中 (資料量大)...' : 'Processing...') : 'Generate Analysis'}
         </button>
 
         {data && (
@@ -623,9 +624,19 @@ function App() {
             <div className="spinner"></div>
             <p style={{ color: '#666', marginTop: '1rem' }}>Analysing data...</p>
             {showLongLoading && (
-              <p style={{ marginTop: '1.5rem', color: 'var(--secondary-color)', fontWeight: '600', animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1rem',
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffecb5',
+                borderRadius: '8px',
+                color: '#856404',
+                fontWeight: '600',
+                animation: 'fadeIn 0.5s ease-out',
+                display: 'inline-block'
+              }}>
                 處理的資料量較大，請稍後。
-              </p>
+              </div>
             )}
           </div>
         )}
