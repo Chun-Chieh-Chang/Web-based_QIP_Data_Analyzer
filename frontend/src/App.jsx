@@ -101,6 +101,13 @@ function App() {
 
   // Check Backend Status on Mount
   useEffect(() => {
+    // If running on GitHub Pages, we know there's no backend, so default to Local Mode immediately
+    if (window.location.hostname.includes('github.io')) {
+      console.log("GitHub Pages detected. Using Local Mode.");
+      setIsLocalMode(true);
+      return;
+    }
+
     axios.get(`${API_BASE}/products`)
       .then(() => setIsLocalMode(false))
       .catch(() => {
