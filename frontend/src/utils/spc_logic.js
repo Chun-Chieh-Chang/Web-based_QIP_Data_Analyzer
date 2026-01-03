@@ -30,6 +30,11 @@ const getPrecision = (data) => {
 const D2 = 1.128;
 
 export class SPCAnalysis {
+    // Helper to format batch name (remove suffix after '-')
+    formatBatchName(name) {
+        if (typeof name !== 'string') return name;
+        return name.split('-')[0];
+    }
 
     // Parse Excel File from Input
     async parseExcel(file) {
@@ -70,7 +75,7 @@ export class SPCAnalysis {
         const batches = [];
         for (let i = 1; i < json.length; i++) {
             if (json[i][0]) {
-                batches.push({ index: i, name: String(json[i][0]) });
+                batches.push({ index: i, name: this.formatBatchName(String(json[i][0])) });
             }
         }
         return batches;
@@ -147,7 +152,7 @@ export class SPCAnalysis {
             if (endBatch !== null && i > Number(endBatch)) continue;
 
             const row = json[i];
-            const batchName = row[0] || `Batch ${i}`;
+            const batchName = this.formatBatchName(row[0] || `Batch ${i}`);
 
             let rowVals = [];
             targetCols.forEach(idx => {
@@ -334,7 +339,7 @@ export class SPCAnalysis {
             if (endBatch !== null && i > Number(endBatch)) continue;
 
             const row = json[i];
-            const batchIdx = row[0] || i;
+            const batchIdx = this.formatBatchName(row[0] || i);
             const vals = [];
             cavityIndices.forEach(idx => {
                 const v = parseFloat(row[idx]);
