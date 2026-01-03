@@ -1,249 +1,69 @@
 # Web-based SPC Analysis Tool
 
-## Overview
-This is a standalone web-based Statistical Process Control (SPC) analysis tool that provides modern, browser-based interface for manufacturing process analysis.
+## 1. Overview
+A professional, standalone Statistical Process Control (SPC) analysis tool. It allows engineers to analyze manufacturing process data directly in a modern web browser, featuring high-performance local processing and optional server-side integration.
 
-## Features
-- Web-based interface accessible through any modern browser
-- Support for up to 32 cavities in multi-cavity analysis
-- Xbar-R control charts with proper statistical formulas (UCL/LCL = X̄ ± A₂R̄ for Xbar, UCL = D₄R̄, LCL = D₃R̄ for R chart)
-- Individual-MR control charts for single cavity analysis
-- Cavity comparison analysis
-- Capability analysis (Cpk, Ppk)
-- Western Electric Rules violation detection
-- Export to Excel functionality
-- **Web/Offline Mode**: Run directly in the browser by uploading Excel files (no backend required for basic analysis)
-- **High Performance**: Uses Web Workers for background data processing, ensuring a smooth UI even with large datasets.
+## 2. Key Features
+- **Dual Runtime Support**: 
+  - **Local Mode (Default)**: Process Excel files entirely in the browser (client-side). No data leaves your machine.
+  - **Server Mode**: Optional integration with a Python/FastAPI backend for centralized data management.
+- **Multifaceted Analysis**:
+  - **Batch Analysis**: Automated selection between Individual-MR (for single cavity) and Xbar-R (for multi-cavity) control charts.
+  - **Cavity Comparison**: Compare performance (Cpk, Mean) across multiple machine cavities (up to 32 supported).
+  - **Group Trend**: Visualize Min/Max/Average trends across production batches.
+- **Statistical Rigor**: Proper calculation of UCL, LCL, CL, Cpk, and Ppk using industry-standard formulas.
+- **Modern User Experience**:
+  - **Web Worker Engine**: Heavy data processing runs in the background to keep the UI responsive.
+  - **Automatic Precision Matching**: Statistical results automatically match the decimal places found in the source Excel data.
+  - **Batch Exclusion**: Interactive filtering to remove outliers or non-representative batches.
+  - **Export to Excel**: Specialized reports with summary and detailed data tabs.
 
-## Recent Updates (2026-01-03)
-- **Automatic Precision Matching**: The output results (Mean, Specs, Control Limits) now automatically match the decimal places found in the source Excel data.
-- **Improved Lot Number Handling**: Automatically removes suffixes from lot numbers (e.g., `160120E-1` becomes `160120E`) for cleaner grouping and labeling.
-- **Batch Exclusion Feature**: Added ability to exclude specific production batches from analysis through interactive checkboxes in the sidebar.
-- **Enhanced Excel Export**: 
-  - Sub-tabs for Summary and Detailed data.
-  - Export filenames now include Part Number, Inspection Item, and Analysis Type.
-  - Option to include Specification Limits in the exported data rows.
-- **Web Worker Integration**: Background processing of large Excel files to prevent browser hanging.
-- Node.js (v14 or later)
-- Python (v3.7 or later)
-- Modern web browser (Chrome, Firefox, Edge, Safari)
-
-## Installation
-
-1. Install Node.js from [nodejs.org](https://nodejs.org/)
-2. Install Python 3.7+ from [python.org](https://python.org/)
-3. Install backend dependencies:
-   ```
-   cd backend
-   pip install -r requirements.txt
-   ```
-4. Install frontend dependencies:
-   ```
-   cd ../frontend
-   npm install
-   ```
-
-## Running the Application
-
-### Method 1: Using Start Scripts
-1. **For Command Prompt users:** Run `StartApplication.bat` to start both backend and frontend servers
-2. **For PowerShell users:** Run `StartApplication.ps1` to start both backend and frontend servers (requires running `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first)
-3. The application will be accessible at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
-
-### Method 2: Manual Start
-1. Start the backend server:
-   ```
-   cd backend
-   python main.py
-   ```
-   The backend will start on an available port (typically 8000 or higher)
-
-2. In a new terminal, start the frontend:
-   ```
-   cd frontend
-   npm run dev
-   ```
-   The frontend will start on port 5173
-
-3. Access the application at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
-
-## Usage
-1. Click "Select Data Folder" to specify your data directory containing Excel files
-2. Select a Part Number and Inspection Item
-3. Choose the analysis type (Batch Analysis, Cavity Comparison, Group Trend)
-4. For Batch Analysis, optionally specify a cavity number (leave blank for Xbar-R charts)
-5. Click "Generate Analysis" to run the analysis
-6. Export results to Excel using the "Export to Excel" button
-
-## Calculation Formulas and Logic
-
-### Control Charts
-
-#### Individual-MR Chart (for single cavity analysis):
-- **Moving Range (MR)**: MRᵢ = |Xᵢ - Xᵢ₋₁|
-- **Average Moving Range**: MR̄ = ΣMRᵢ / (n-1)
-- **Control Limits for Individual Chart**:
-  - UCL = X̄ + 2.66 × MR̄
-  - CL = X̄
-  - LCL = X̄ - 2.66 × MR̄
-- **Control Limits for Moving Range Chart**:
-  - UCL = 3.267 × MR̄
-  - CL = MR̄
-  - LCL = 0 (or D₃ × MR̄ if subgroup size > 10)
-
-#### Xbar-R Chart (for all cavities analysis when no specific cavity is selected):
-- **Subgroup size (n)**: Equals the number of cavities
-- **Control Limits for Xbar Chart**:
-  - UCL = X̄̄ + A₂R̄
-  - CL = X̄̄
-  - LCL = X̄̄ - A₂R̄
-- **Control Limits for R Chart**:
-  - UCL = D₄R̄
-  - CL = R̄
-  - LCL = D₃R̄
-
-Where A₂, D₃, and D₄ are control chart constants that depend on subgroup size (n):
-
-| n | A₂    | D₃    | D₄    |
-|---|-------|-------|-------|
-| 2 | 1.880 | 0     | 3.267 |
-| 3 | 1.023 | 0     | 2.575 |
-| 4 | 0.729 | 0     | 2.282 |
-| 5 | 0.577 | 0     | 2.115 |
-| 6 | 0.483 | 0     | 2.004 |
-| 7 | 0.419 | 0.076 | 1.924 |
-| 8 | 0.373 | 0.136 | 1.864 |
-| 9 | 0.337 | 0.184 | 1.816 |
-
-### Capability Analysis
-
-#### Cpk (Process Capability Index):
-- **For Individual-MR Chart**: Cpk = min[(USL - X̄)/(3 × σ_within), (X̄ - LSL)/(3 × σ_within)]
-  - Where σ_within = MR̄ / d₂, and d₂ = 1.128 for n=2
-
-- **For Xbar-R Chart**: Cpk = min[(USL - X̄̄)/(3 × σ_within), (X̄̄ - LSL)/(3 × σ_within)]
-  - Where σ_within = R̄ / d₂, and d₂ varies by subgroup size (number of cavities)
-
-#### Ppk (Process Performance Index):
-- Ppk = min[(USL - X̄)/(3 × σ_overall), (X̄ - LSL)/(3 × σ_overall)]
-- Where σ_overall = standard deviation of all individual values
-
-### Key Differences:
-- **Cpk** uses within-subgroup variation (short-term capability)
-- **Ppk** uses overall variation (long-term performance)
-- Typically Cpk ≥ Ppk, as overall variation includes more sources of variation
-
-## Documentation
-- Complete user manual: `SPC_Tool_User_Manual.md`
-
-## Using the Web-based SPC Analyzer
+## 3. Installation & Getting Started
 
 ### Prerequisites
-- **Node.js** (v14 or later)
-- **Python** (v3.7 or later)
-- **Modern web browser** (Chrome, Firefox, Edge, Safari)
+- [Node.js](https://nodejs.org/) (v14 or later)
+- (Optional) [Python](https://python.org/) 3.7+ (only required for Server Mode)
 
-### Installation and Setup
-
-1. **Clone or download** the repository to your local machine:
+### Quick Setup
+1. **Frontend Dependencies**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Web-based-SPC-Analyzer.git
+   cd frontend
+   npm install
    ```
-
-2. **Install backend dependencies**:
+2. **Backend Dependencies (Optional)**:
    ```bash
-   cd Web-based-SPC-Analyzer/backend
+   cd backend
    pip install -r requirements.txt
    ```
 
-3. **Install frontend dependencies**:
-   ```bash
-   cd ../frontend
-   npm install
-   ```
+### Running the App
+- **For All Users**: Run `StartApplication.bat` (Windows) or `StartApplication.ps1` (PowerShell).
+- **Manual Start**:
+  - Frontend: `cd frontend && npm run dev` (Default: http://localhost:5173)
+  - Backend: `cd backend && python main.py`
 
-### Running the Application
-
-#### Method 1: Using Start Scripts
-1. **For Command Prompt users**: Run `StartApplication.bat` to start both backend and frontend servers
-2. **For PowerShell users**: Run `StartApplication.ps1` to start both backend and frontend servers (requires running `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first)
-3. The application will be accessible at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
-
-#### Method 2: Manual Start
-1. Start the backend server:
-   ```bash
-   cd backend
-   python main.py
-   ```
-   The backend will start on an available port (typically 8000 or higher)
-
-2. In a new terminal, start the frontend:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-   The frontend will start on port 5173
-
-3. Access the application at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
-
-### Usage Instructions
-
-1. **Select Data Folder**: Click "Select Data Folder" to specify your data directory containing Excel files
-2. **Select Part Number**: Choose from the dropdown list of available part numbers
-3. **Select Inspection Item**: Choose the inspection item to analyze
-4. **Choose Analysis Type**:
-   - **Batch Analysis**: For individual cavity analysis or average of all cavities
-   - **Cavity Comparison**: Compare capability across different cavities
-   - **Group Trend**: View trends of min/max/average values across batches
-5. **For Batch Analysis**: Optionally specify a cavity number (leave blank for Xbar-R charts analyzing all cavities)
-6. **Set Batch Range**: Select the start and end batches for your analysis
-7. **Generate Analysis**: Click "Generate Analysis" to run the analysis
-8. **Export Results**: Export results to Excel using the "Export to Excel" button
-
-### Analysis Types Explained
-
-#### 1. Batch Analysis
-- **Single Cavity Mode**: Performs Individual-MR analysis for a specific cavity
-- **All Cavities Mode**: Performs Xbar-R analysis using all cavities (when no cavity is specified)
-- Provides capability indices (Cpk, Ppk), control charts, and Western Electric rule violations
-
-#### 2. Cavity Comparison
-- Compares Cpk values across different cavities
-- Shows average values comparison against specifications
-- Helps identify underperforming cavities
-
-#### 3. Group Trend
-- Shows min/max/average values across batches
-- Helps identify process trends over time
+## 4. Technical Specifications
 
 ### Data Format Requirements
+Your Excel files must follow these structure conventions:
+- **Specification Limits**: Cell **B2** (Target), **C2** (USL), **D2** (LSL).
+- **Cavity Detection**: Columns containing "穴" (e.g., "1穴", "2穴") are automatically treated as measurement subgroups.
+- **Batch Labels**: The first column (Column A) should contain production lot/batch numbers.
 
-Your Excel data files should have:
-- Part number as the filename (e.g., "PART001.xlsx")
-- Inspection items as sheet names
-- Specification limits in cells B2 (Target), C2 (USL), D2 (LSL)
-- Cavity columns identified by containing "穴" in the column header
-- Batch identifiers in the first column
+### Control Chart Formulas
+- **Individual-MR**: Uses Moving Range (MR̄)/d₂ for σ_within estimation.
+- **Xbar-R**: Uses Average Range (R̄)/d₂ for σ_within. Constants (A₂, D₃, D₄) are automatically assigned based on subgroup size (n=2 to 32).
 
-### Troubleshooting
+## 5. Deployment
+The tool is fully compatible with static hosting (e.g., GitHub Pages).
+1. Build the frontend: `npm run build`.
+2. Deploy the `dist` folder.
+3. The app will automatically enter "Local Mode" when deployed to `github.io`.
 
-1. **Port Issues**: If the default ports (8000 for backend, 5173 for frontend) are busy, the applications will automatically use the next available ports. Check the terminal output for the correct URLs.
+## 6. Project Structure
+- `frontend/`: React source code, Web Worker logic, and styling.
+- `backend/`: Python FastAPI implementation for server-side analysis.
+- `docs/`: User manual and technical documentation.
 
-2. **Data Directory**: Make sure to select a valid data directory containing properly formatted Excel files.
-
-3. **Dependency Issues**: If you encounter dependency issues, try reinstalling:
-   - Backend: `pip install -r requirements.txt`
-   - Frontend: `npm install`
-
-4. **CORS Issues**: The backend is configured to allow all origins for development purposes.
-
-## Moving to Another Location
-
-The web-based SPC analysis tool is designed to be portable. To move it to another location:
-
-1. Copy the entire `web_spc_tool` folder to the new location
-2. **For Command Prompt users:** Run `InstallDependencies.bat` to install all dependencies
-   **For PowerShell users:** Run `InstallDependencies.ps1` to install all dependencies
-3. Run `StartApplication.bat` (or `StartApplication.ps1` for PowerShell) to start the application
-4. Access the application at `http://localhost:5173` (or the next available port if 5173 is busy, check the terminal output for the exact address)
-- Change log: `CHANGELOG_2025-12-31.md`
+---
+*Created by [Antigravity](https://github.com/Chun-Chieh-Chang/Web-based_SPC_Analyzer) - 2026-01-03*

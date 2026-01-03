@@ -25,9 +25,6 @@ const getPrecision = (data) => {
     return Math.min(max, 10);
 };
 
-// Helper to yield execution to allow Worker to respond to status requests/breathe
-const yieldExecution = () => new Promise(resolve => setTimeout(resolve, 0));
-
 // d2 constant for n=2 (Moving Range)
 const D2 = 1.128;
 
@@ -109,7 +106,7 @@ export class SPCAnalysis {
         return { target, usl, lsl, precision: specPrecision };
     }
 
-    // 1. Batch Analysis - Memory Optimized & Async-friendly
+    // 1. Batch Analysis - Memory Optimized
     async analyzeBatch(workbook, sheetName, cavityName = null, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
@@ -142,9 +139,6 @@ export class SPCAnalysis {
         let dataMaxPrecision = 0;
 
         for (let R = 2; R <= range.e.r; R++) {
-            // Periodically yield to prevent total UI freeze on large files
-            if (R % 500 === 0) await yieldExecution();
-
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
@@ -232,7 +226,6 @@ export class SPCAnalysis {
             if (headCell && String(headCell.v).includes("穴")) {
                 const vals = [];
                 for (let R = 2; R <= range.e.r; R++) {
-                    if (R % 1000 === 0) await yieldExecution();
                     if (startBatch !== null && R < Number(startBatch)) continue;
                     if (endBatch !== null && R > Number(endBatch)) continue;
                     if (skipIndices.includes(R)) continue;
@@ -271,7 +264,6 @@ export class SPCAnalysis {
         }
         const groups = [];
         for (let R = 2; R <= range.e.r; R++) {
-            if (R % 500 === 0) await yieldExecution();
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
