@@ -669,35 +669,40 @@ function App() {
         )}
 
         {data && analysisType === 'batch' && data.capability && (
-          <>
-            {/* Dynamic Expert Summary Engine */}
+          <div className="animate-in">
+            {/* Dynamic Expert Summary Engine - Senior Aesthetic Polish */}
             <div className="card" style={{
-              background: 'linear-gradient(135deg, #1d39c4 0%, #001529 100%)',
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
               color: '#fff',
               border: 'none',
-              boxShadow: '0 4px 15px rgba(29, 57, 196, 0.3)'
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              padding: '2.5rem'
             }}>
-              <h2 style={{ color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <TrendingUp size={24} /> 自動化專家診斷報告 (Automated Diagnostic)
+              <h2 style={{ color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '1.5rem' }}>
+                <TrendingUp size={28} color="#38bdf8" /> 智能製程診斷報告
               </h2>
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {generateExpertDiagnostic(data, 'batch').map((msg, i) => (
                   <div key={i} style={{
-                    padding: '0.8rem',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    backdropFilter: 'blur(5px)',
-                    fontSize: '0.95rem',
-                    lineHeight: '1.5'
+                    padding: '1.2rem',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    fontSize: '1rem',
+                    lineHeight: '1.6',
+                    letterSpacing: '0.01em'
                   }}>
-                    {msg.split('**').map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}
+                    {msg.split('**').map((part, idx) => idx % 2 === 1 ? <strong key={idx} style={{ color: '#38bdf8' }}>{part}</strong> : part)}
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="card">
-              <h2>Capability Summary: {selectedItem} {selectedCavity && `(${selectedCavity})`}</h2>
+              <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>製程能力摘要: {selectedItem}</span>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '400' }}>{selectedCavity ? `模穴: ${selectedCavity}` : '全穴平均'}</span>
+              </h2>
               <div className="stats-grid" style={{ marginTop: '1rem' }}>
                 <div className="stat-item">
                   <span className="stat-label">Cpk (Capability)</span>
@@ -809,166 +814,138 @@ function App() {
               </div>
             </div>
 
-            <div className="charts-container">
-              <div className="card">
-                <Plot
-                  data={[ // Determine if this is Xbar-R chart (All Cavities mode) or Individual-X chart
-                    ...(data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0) ? [
-                      // Xbar chart data
-                      {
-                        x: data.data.labels.map((_, i) => i),
-                        y: data.data.values,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: 'Xbar (Avg)',
-                        line: {
-                          color: 'var(--primary-color)',
-                          width: 3
-                        },
-                        marker: {
-                          color: data.data.values.map(val => {
-                            if (data.control_limits &&
-                              data.control_limits.ucl_xbar &&
-                              data.control_limits.lcl_xbar &&
-                              ((val > data.control_limits.ucl_xbar) ||
-                                (val < data.control_limits.lcl_xbar))) {
-                              return 'red'; // Out of control points in red
-                            }
-                            return 'var(--primary-color)'; // In control points in blue
-                          }),
-                          size: 8
-                        }
-                      },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.ucl_xbar), type: 'scatter', mode: 'lines', name: 'UCL (Xbar)', line: { color: 'red', dash: 'dash' } },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.cl_xbar), type: 'scatter', mode: 'lines', name: 'CL (Xbar)', line: { color: 'green' } },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.lcl_xbar), type: 'scatter', mode: 'lines', name: 'LCL (Xbar)', line: { color: 'red', dash: 'dash' } },
-                      ...(showSpecLimits ? [
-                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: 'orange', dash: 'dot' } },
-                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: 'orange', dash: 'dot' } }
-                      ] : [])
-                    ] : [
-                      // Individual-X chart data
-                      {
-                        x: data.data.labels.map((_, i) => i),
-                        y: data.data.values,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: 'Measurement',
-                        line: {
-                          color: 'var(--primary-color)',
-                          width: 3
-                        },
-                        marker: {
-                          color: data.data.values.map(val => {
-                            if (data.control_limits &&
-                              data.control_limits.ucl_x &&
-                              data.control_limits.lcl_x &&
-                              ((val > data.control_limits.ucl_x) ||
-                                (val < data.control_limits.lcl_x))) {
-                              return 'red'; // Out of control points in red
-                            }
-                            return 'var(--primary-color)'; // In control points in blue
-                          }),
-                          size: 8
-                        }
-                      },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.ucl_x), type: 'scatter', mode: 'lines', name: 'UCL', line: { color: 'red', dash: 'dash' } },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.cl_x), type: 'scatter', mode: 'lines', name: 'CL', line: { color: 'green' } },
-                      { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.lcl_x), type: 'scatter', mode: 'lines', name: 'LCL', line: { color: 'red', dash: 'dash' } },
-                      ...(showSpecLimits ? [
-                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: 'orange', dash: 'dot' } },
-                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: 'orange', dash: 'dot' } }
-                      ] : [])
-                    ])
-                  ]}
-                  layout={{
-                    title: (data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0)) ? 'Xbar Control Chart' : 'Individual-X Control Chart',
-                    height: 400,
-                    autosize: true,
-                    margin: { t: 50, b: 80, l: 50, r: 50 },
-                    xaxis: {
-                      tickvals: data.data.labels.map((_, i) => i),
-                      ticktext: data.data.labels,
-                      tickangle: 45
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                />
+            <div className="card" style={{ padding: '0' }}>
+              <div style={{ padding: '32px 32px 0 32px' }}>
+                <h2 style={{ marginBottom: '8px' }}>控制圖分析 (Process Control Charts)</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>即時監測製程中心趨勢與變異一致性</p>
               </div>
-
-              <div className="card">
-                <Plot
-                  data={[ // Determine if this is R chart (All Cavities mode) or MR chart
-                    ...(data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0) ? [
-                      // R chart data
-                      {
-                        x: data.data.r_labels.map((_, i) => i),
-                        y: data.data.r_values,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: 'Range (R)',
-                        line: {
-                          color: '#7030a0',
-                          width: 2
+              <div className="charts-container" style={{ padding: '20px' }}>
+                <div style={{ marginBottom: '40px' }}>
+                  <Plot
+                    data={[
+                      ...(data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0) ? [
+                        {
+                          x: data.data.labels.map((_, i) => i),
+                          y: data.data.values,
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: 'X-bar (均值)',
+                          line: { color: '#006aff', width: 2.5, shape: 'spline' },
+                          marker: {
+                            color: data.data.values.map(val => {
+                              if (data.control_limits && data.control_limits.ucl_xbar && data.control_limits.lcl_xbar && ((val > data.control_limits.ucl_xbar) || (val < data.control_limits.lcl_xbar))) return '#ef4444';
+                              return '#006aff';
+                            }),
+                            size: 7,
+                            line: { color: '#fff', width: 1.5 }
+                          }
                         },
-                        marker: {
-                          color: data.data.r_values.map(val => {
-                            if (data.control_limits &&
-                              data.control_limits.ucl_r &&
-                              val > data.control_limits.ucl_r) {
-                              return 'red'; // Out of control points in red
-                            }
-                            return '#7030a0'; // In control points in purple
-                          }),
-                          size: 8
-                        }
-                      },
-                      { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.ucl_r), type: 'scatter', mode: 'lines', name: 'UCL (R)', line: { color: 'red', dash: 'dash' } },
-                      { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.cl_r), type: 'scatter', mode: 'lines', name: 'CL (R)', line: { color: 'green' } },
-                      { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.lcl_r), type: 'scatter', mode: 'lines', name: 'LCL (R)', line: { color: 'red', dash: 'dash' } }
-                    ] : [
-                      // MR chart data
-                      {
-                        x: data.data.labels.slice(1).map((_, i) => i),
-                        y: data.data.mr_values,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: 'Moving Range',
-                        line: {
-                          color: '#7030a0',
-                          width: 2
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.ucl_xbar), type: 'scatter', mode: 'lines', name: 'UCL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.cl_xbar), type: 'scatter', mode: 'lines', name: 'CL', line: { color: '#10b981', width: 1.5 } },
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.lcl_xbar), type: 'scatter', mode: 'lines', name: 'LCL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                        ...(showSpecLimits ? [
+                          { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: '#f59e0b', width: 1, dash: 'dot' } },
+                          { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: '#f59e0b', width: 1, dash: 'dot' } }
+                        ] : [])
+                      ] : [
+                        {
+                          x: data.data.labels.map((_, i) => i),
+                          y: data.data.values,
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: '單值 (Value)',
+                          line: { color: '#006aff', width: 2.5 },
+                          marker: {
+                            color: data.data.values.map(val => {
+                              if (data.control_limits && data.control_limits.ucl_x && data.control_limits.lcl_x && ((val > data.control_limits.ucl_x) || (val < data.control_limits.lcl_x))) return '#ef4444';
+                              return '#006aff';
+                            }),
+                            size: 7,
+                            line: { color: '#fff', width: 1.5 }
+                          }
                         },
-                        marker: {
-                          color: data.data.mr_values.map(val => {
-                            if (data.control_limits &&
-                              data.control_limits.ucl_mr &&
-                              val > data.control_limits.ucl_mr) {
-                              return 'red'; // Out of control points in red
-                            }
-                            return '#7030a0'; // In control points in purple
-                          }),
-                          size: 8
-                        }
-                      },
-                      { x: data.data.labels.slice(1).map((_, i) => i), y: Array(data.data.mr_values.length).fill(data.control_limits.ucl_mr), type: 'scatter', mode: 'lines', name: 'UCL (MR)', line: { color: 'red', dash: 'dash' } },
-                      { x: data.data.labels.slice(1).map((_, i) => i), y: Array(data.data.mr_values.length).fill(data.control_limits.cl_mr), type: 'scatter', mode: 'lines', name: 'CL (MR)', line: { color: 'green' } }
-                    ])
-                  ]}
-                  layout={{
-                    title: (data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0)) ? 'R Chart (Range)' : 'Moving Range Chart',
-                    height: 300,
-                    autosize: true,
-                    xaxis: {
-                      tickvals: (data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0)) ? data.data.r_labels.map((_, i) => i) : data.data.labels.slice(1).map((_, i) => i),
-                      ticktext: (data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0)) ? data.data.r_labels : data.data.labels.slice(1),
-                      tickangle: 45
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                />
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.ucl_x), type: 'scatter', mode: 'lines', name: 'UCL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.cl_x), type: 'scatter', mode: 'lines', name: 'CL', line: { color: '#10b981', width: 1.5 } },
+                        { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.control_limits.lcl_x), type: 'scatter', mode: 'lines', name: 'LCL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                        ...(showSpecLimits ? [
+                          { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: '#f59e0b', width: 1, dash: 'dot' } },
+                          { x: data.data.labels.map((_, i) => i), y: Array(data.data.values.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: '#f59e0b', width: 1, dash: 'dot' } }
+                        ] : [])
+                      ])
+                    ]}
+                    layout={{
+                      title: false,
+                      height: 480,
+                      margin: { t: 20, b: 60, l: 60, r: 20 },
+                      paper_bgcolor: 'rgba(0,0,0,0)',
+                      plot_bgcolor: 'rgba(0,0,0,0)',
+                      font: { family: 'Inter', size: 12 },
+                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45 },
+                      yaxis: { gridcolor: '#f1f5f9', zeroline: false },
+                      showlegend: true,
+                      legend: { orientation: 'h', y: 1.12 }
+                    }}
+                    config={{ responsive: true, displayModeBar: false }}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <Plot
+                    data={[
+                      ...((data.data.cavity_actual_name === "Average of All Cavities" || (data.data.cavity_actual_name && data.data.r_values && data.data.r_values.length > 0)) ? [
+                        {
+                          x: data.data.r_labels.map((_, i) => i),
+                          y: data.data.r_values,
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: 'R (全距)',
+                          line: { color: '#64748b', width: 2 },
+                          marker: {
+                            color: data.data.r_values.map(val => {
+                              if (data.control_limits && data.control_limits.ucl_r && (val > data.control_limits.ucl_r)) return '#ef4444';
+                              return '#64748b';
+                            }),
+                            size: 6
+                          }
+                        },
+                        { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.ucl_r), type: 'scatter', mode: 'lines', name: 'UCL (R)', line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
+                        { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.cl_r), type: 'scatter', mode: 'lines', name: 'CL (R)', line: { color: '#10b981', width: 1.5 } }
+                      ] : [
+                        {
+                          x: data.data.labels.slice(1).map((_, i) => i),
+                          y: data.data.mr_values,
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: 'MR',
+                          line: { color: '#64748b', width: 2 },
+                          marker: {
+                            color: data.data.mr_values.map(val => (data.control_limits && data.control_limits.ucl_mr && val > data.control_limits.ucl_mr) ? '#ef4444' : '#64748b'),
+                            size: 6
+                          }
+                        },
+                        { x: data.data.labels.slice(1).map((_, i) => i), y: Array(data.data.mr_values.length).fill(data.control_limits.ucl_mr), type: 'scatter', mode: 'lines', name: 'UCL (MR)', line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
+                        { x: data.data.labels.slice(1).map((_, i) => i), y: Array(data.data.mr_values.length).fill(data.control_limits.cl_mr), type: 'scatter', mode: 'lines', name: 'CL (MR)', line: { color: '#10b981', width: 1.5 } }
+                      ])
+                    ]}
+                    layout={{
+                      title: false,
+                      height: 320,
+                      margin: { t: 10, b: 60, l: 60, r: 20 },
+                      paper_bgcolor: 'rgba(0,0,0,0)',
+                      plot_bgcolor: 'rgba(0,0,0,0)',
+                      font: { family: 'Inter', size: 11 },
+                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45 },
+                      yaxis: { gridcolor: '#f1f5f9', zeroline: false },
+                      showlegend: true,
+                      legend: { orientation: 'h', y: 1.15 }
+                    }}
+                    config={{ responsive: true, displayModeBar: false }}
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {data && analysisType === 'cavity' && data.cavities && (
