@@ -23,6 +23,10 @@ The Web-based SPC (Statistical Process Control) Analysis Tool is a modern web ap
 - Capability analysis (Cpk, Ppk)
 - Western Electric Rules violation detection
 - Export to Excel functionality
+- **High Performance**: Background data processing with Web Workers for a smooth experience.
+- **Precision Matching**: Automatic detection of decimal places from source Excel files.
+- **Batch Exclusion**: Support for interactive removal of specific batches from analysis.
+- **Web/Offline Mode**: Run directly in browser by uploading files.
 
 ## System Requirements
 
@@ -103,9 +107,10 @@ The Web-based SPC (Statistical Process Control) Analysis Tool is a modern web ap
 - **Production Range Selection**: Start and End batch selection
 - **Analysis Type**: Select between Batch Analysis, Cavity Comparison, or Group Trend
 - **Cavity (Optional)**: Field to specify a particular cavity (for Batch Analysis)
+- **Exclude Batches**: Interactive list to uncheck specific batches you want to ignore.
 - **Show Specification Limits**: Checkbox to toggle spec limit visibility
 - **Generate Analysis**: Button to run the selected analysis
-- **Export to Excel**: Button to export results to Excel
+- **Export to Excel**: Button to export results to Excel (Summary & Data tabs)
 - **Reset**: Button to clear all selections and data
 
 #### 2. Main Content Area
@@ -226,8 +231,10 @@ Xbar-R charts are appropriate when:
 - **Solution**: Verify file exists and sheet name matches exactly
 
 #### 5. Decimal precision display issues
-- **Cause**: Floating-point representation
-- **Solution**: The system automatically formats to preserve original precision
+- **Feature**: The system reads **formatted text** from Excel (e.g., if a cell is formatted to show `10.50`, it detects 2 decimals).
+- **Logic**: It checks both the Specification Limits (Target, USL, LSL) and the raw measurement data.
+- **Output**: The most precise (highest number of decimals) discovered among them is used for all summary statistics (Mean, CL, etc.) and calculations to ensure consistency with source records.
+- **Solution**: If the display is unexpected, please verify the cell formatting or content in the source Excel file.
 
 ### Error Messages
 
