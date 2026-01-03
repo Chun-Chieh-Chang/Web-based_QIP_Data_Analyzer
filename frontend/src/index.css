@@ -171,39 +171,6 @@ button:hover {
   }
 }
 
-@keyframes delayedFadeIn {
-  0% {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(10px);
-  }
-
-  99% {
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  100% {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-}
-
-.long-loading-notice {
-  margin-top: 2rem;
-  padding: 1rem 2rem;
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
-  border-radius: 8px;
-  color: #856404;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  display: inline-block;
-  opacity: 0;
-  animation: delayedFadeIn 0.5s ease-out 5s forwards;
-}
-
 .loading-container {
   display: flex;
   flex-direction: column;
