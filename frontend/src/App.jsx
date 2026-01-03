@@ -832,7 +832,7 @@ function App() {
                           name: 'X-bar (均值)',
                           text: data.data.labels,
                           hovertemplate: '<b>批號: %{text}</b><br>數值: %{y:.4f}<extra></extra>',
-                          line: { color: '#006aff', width: 2.5, shape: 'spline' },
+                          line: { color: '#006aff', width: 2.5 },
                           marker: {
                             color: data.data.values.map(val => {
                               if (data.control_limits && data.control_limits.ucl_xbar && data.control_limits.lcl_xbar && ((val > data.control_limits.ucl_xbar) || (val < data.control_limits.lcl_xbar))) return '#ef4444';
