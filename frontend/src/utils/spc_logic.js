@@ -15,13 +15,13 @@ const getPrecision = (data) => {
     let max = 0;
     for (const val of data) {
         if (val === null || val === undefined || val === '') continue;
-        const str = String(val);
+        const str = String(val).trim();
         if (str.includes('.')) {
             const dec = str.split('.')[1].length;
             if (dec > max) max = dec;
         }
     }
-    return Math.min(max, 10); // Standard SPC rarely goes beyond 10
+    return Math.min(max, 10);
 };
 
 
@@ -278,7 +278,7 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision, getPrecision(rawSourceData))
+                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceData))
             }
         };
     }
@@ -343,7 +343,7 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision, getPrecision(rawSourceStrings))
+                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceStrings))
             }
         };
     }
@@ -401,7 +401,7 @@ export class SPCAnalysis {
                 target: specs.target,
                 usl: specs.usl,
                 lsl: specs.lsl,
-                decimals: Math.max(specs.precision, getPrecision(rawSourceStrings))
+                decimals: Math.max(specs.precision || 0, getPrecision(rawSourceStrings))
             }
         };
     }

@@ -609,7 +609,7 @@ function App() {
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">CL (Mean)</span>
-                  <span className="stat-value">{(data.stats?.mean || data.stats?.xbar_mean) != null ? parseFloat(data.stats?.mean || data.stats?.xbar_mean).toFixed(data.specs?.decimals || 4) : '0.0000'}</span>
+                  <span className="stat-value">{(data.stats?.mean || data.stats?.xbar_mean) != null ? parseFloat(data.stats?.mean || data.stats?.xbar_mean).toFixed(data.specs?.decimals !== undefined ? data.specs.decimals : 4) : '0.0000'}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">Target / USL / LSL</span>
