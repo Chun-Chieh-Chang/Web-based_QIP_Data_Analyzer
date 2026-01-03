@@ -205,12 +205,37 @@ export class SPCAnalysis {
         const cpk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * within_std), (mean - specs.lsl) / (3 * within_std)) : null;
         const ppk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * overall_std), (mean - specs.lsl) / (3 * overall_std)) : null;
 
+        // --- NEW: Detect Violations (Out of Control Points) ---
+        const xbar_violations = [];
+        const r_violations = [];
+
+        values.forEach((v, i) => {
+            if (v > ucl_x || v < lcl_x) {
+                xbar_violations.push(`${labels[i]}: ${isXbar ? 'X-bar' : 'Value'} (${v.toFixed(dataMaxPrecision)}) out of control limits`);
+            }
+        });
+
+        r_values.forEach((v, i) => {
+            if (v > ucl_r || v < lcl_r) {
+                r_violations.push(`${isXbar ? labels[i] : labels[i + 1]}: Range (${v.toFixed(dataMaxPrecision)}) out of control limits`);
+            }
+        });
+
         return {
             stats: { mean, within_std, overall_std, std_within: within_std, std_overall: overall_std },
-            control_limits: { ucl_x, lcl_x, cl_x: mean, ucl_r, lcl_r, cl_r, ucl_xbar: ucl_x, lcl_xbar: lcl_x, cl_xbar: mean },
-            capability: { cpk, ppk },
-            data: { cavity_actual_name: isXbar ? "Average of All Cavities" : cavityName, labels, values, r_values: isXbar ? rangeValues : mr, r_labels: labels },
-            specs: { target: specs.target, usl: specs.usl, lsl: specs.lsl, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision }
+            control_limits: {
+                ucl_x, lcl_x, cl_x: mean, ucl_r, lcl_r, cl_r,
+                ucl_xbar: ucl_x, lcl_xbar: lcl_x, cl_xbar: mean,
+                ucl_mr: ucl_r, cl_mr: cl_r // Compatibility for I-MR
+            },
+            capability: { cpk, ppk, xbar_cpk: cpk, xbar_ppk: ppk },
+            data: {
+                cavity_actual_name: isXbar ? "Average of All Cavities" : cavityName,
+                labels, values, r_values: isXbar ? rangeValues : mr, r_labels: labels,
+                mr_values: isXbar ? [] : mr
+            },
+            specs: { target: specs.target, usl: specs.usl, lsl: specs.lsl, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision },
+            violations: { xbar_violations, r_violations }
         };
     }
 
