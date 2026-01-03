@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { SPCAnalysis } from './utils/spc_logic';
+// SPCAnalysis now runs in worker.js
 
 const API_BASE = '/api';
 
@@ -27,11 +27,56 @@ function App() {
   // Local Mode State
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [localFiles, setLocalFiles] = useState([]); // Array of File objects
-  const [workbook, setWorkbook] = useState(null); // Current active workbook
-  const [spcEngine] = useState(new SPCAnalysis());
 
   // State for cavity information
   const [cavityInfo, setCavityInfo] = useState(null);
+
+  // Web Worker Ref
+  const workerRef = useRef(null);
+
+  // Initialize Web Worker
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('./utils/spc.worker.js', import.meta.url), { type: 'module' });
+
+    workerRef.current.onmessage = (e) => {
+      const { type, payload } = e.data;
+      switch (type) {
+        case 'PARSE_SUCCESS':
+          setLoading(false);
+          break;
+        case 'PRODUCTS_LOADED':
+          setProducts(payload.products);
+          if (payload.products.length > 0) setSelectedProduct(payload.products[0]);
+          break;
+        case 'ITEMS_LOADED':
+          setItems(payload.items);
+          setCavityInfo(payload.cavityInfo);
+          break;
+        case 'BATCHES_LOADED':
+          setBatches(payload.batches);
+          if (payload.batches.length > 0) {
+            setStartBatch(payload.batches[0].index);
+            setEndBatch(payload.batches[payload.batches.length - 1].index);
+            setExcludedBatches([]);
+          }
+          break;
+        case 'ANALYSIS_SUCCESS':
+          setData(payload.result);
+          setLoading(false);
+          break;
+        case 'ERROR':
+          setError(payload.message);
+          setLoading(false);
+          break;
+        default:
+          break;
+      }
+    };
+
+    return () => {
+      if (workerRef.current) workerRef.current.terminate();
+    };
+  }, []);
 
   // Function to reset all states to initial values
   const resetAll = () => {
@@ -70,12 +115,9 @@ function App() {
 
     setLocalFiles(files);
     const productNames = files.map(f => f.name.replace('.xlsx', ''));
+    // Products will be set via worker response if possible, but for initial UI we set them here
     setProducts(productNames);
-
-    // Select first one by default
-    if (productNames.length > 0) {
-      setSelectedProduct(productNames[0]);
-    }
+    if (productNames.length > 0) setSelectedProduct(productNames[0]);
   };
 
   // Helper to get file by product name
@@ -234,16 +276,8 @@ function App() {
   useEffect(() => {
     if (selectedProduct && selectedItem) {
       if (isLocalMode) {
-        // Local Mode: Get batches from workbook
-        if (workbook) {
-          const b = spcEngine.getBatches(workbook, selectedItem);
-          setBatches(b);
-          if (b.length > 0) {
-            setStartBatch(b[0].index);
-            setEndBatch(b[b.length - 1].index);
-            setExcludedBatches([]);
-          }
-        }
+        // Local Mode: Request batches from worker
+        workerRef.current.postMessage({ type: 'GET_BATCHES', payload: { item: selectedItem } });
       } else {
         // Server Mode
         axios.get(`${API_BASE}/batches?product=${selectedProduct}&item=${selectedItem}`)
@@ -258,7 +292,7 @@ function App() {
           .catch(err => setError('Failed to load batches'));
       }
     }
-  }, [selectedProduct, selectedItem, isLocalMode, workbook]);
+  }, [selectedProduct, selectedItem, isLocalMode]);
 
   // Clear data when selection changes to prevent stale UI
   useEffect(() => {
@@ -270,15 +304,14 @@ function App() {
   useEffect(() => {
     if (selectedProduct) {
       if (isLocalMode) {
-        // Local Mode: Parse file and get sheets
+        // Local Mode: Parse file in worker
         const file = getLocalFile(selectedProduct);
         if (file) {
-          spcEngine.parseExcel(file).then(wb => {
-            setWorkbook(wb);
-            const items = spcEngine.getInspectionItems(wb);
-            setItems(items);
-            if (items.length > 0) setSelectedItem(items[0]);
-          }).catch(err => setError("Failed to parse local file: " + err));
+          setLoading(true);
+          // 1. Parse Excel in BG
+          workerRef.current.postMessage({ type: 'PARSE_EXCEL', payload: { file } });
+          // 2. Request Items
+          workerRef.current.postMessage({ type: 'GET_ITEMS', payload: { product: selectedProduct } });
         }
       } else {
         // Server Mode
@@ -294,28 +327,19 @@ function App() {
     }
   }, [selectedProduct, isLocalMode]);
 
-  // Fetch cavity information when item is selected
+  // Cavity information for Server Mode (Local mode handled via worker)
   useEffect(() => {
-    if (selectedProduct && selectedItem) {
-      if (isLocalMode) {
-        if (workbook) {
-          const info = spcEngine.getCavityInfo(workbook, selectedItem);
-          setCavityInfo(info);
-        }
-      } else {
-        axios.get(`${API_BASE}/cavity-info?product=${selectedProduct}&item=${selectedItem}`)
-          .then(res => {
-            setCavityInfo(res.data);
-          })
-          .catch(err => {
-            console.log(`Cavity info not available: ${err.message}`);
-            setCavityInfo(null);
-          });
-      }
-    } else {
-      setCavityInfo(null);
+    if (!isLocalMode && selectedProduct && selectedItem) {
+      axios.get(`${API_BASE}/cavity-info?product=${selectedProduct}&item=${selectedItem}`)
+        .then(res => {
+          setCavityInfo(res.data);
+        })
+        .catch(err => {
+          console.log(`Cavity info not available: ${err.message}`);
+          setCavityInfo(null);
+        });
     }
-  }, [selectedProduct, selectedItem, isLocalMode, workbook]);
+  }, [selectedProduct, selectedItem, isLocalMode]);
 
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
@@ -327,25 +351,17 @@ function App() {
 
     try {
       if (isLocalMode) {
-        if (!workbook) throw new Error("No workbook loaded");
-        // Local Analysis
-        let result;
-        if (analysisType === 'batch') {
-          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity, startBatch, endBatch, excludedBatches);
-        } else if (analysisType === 'cavity') {
-          result = spcEngine.analyzeCavity(workbook, selectedItem, startBatch, endBatch, excludedBatches);
-        } else if (analysisType === 'group') {
-          result = spcEngine.analyzeGroup(workbook, selectedItem, startBatch, endBatch, excludedBatches);
-        }
-
-        if (result.error) throw new Error(result.error);
-
-        // Add dummy structure if missing (to match backend format) for batch analysis
-        if (result.data && !result.data.r_values) {
-          result.data.r_values = [];
-          result.data.r_labels = [];
-        }
-        setData(result);
+        workerRef.current.postMessage({
+          type: 'RUN_ANALYSIS',
+          payload: {
+            analysisType,
+            selectedItem,
+            selectedCavity,
+            startBatch,
+            endBatch,
+            excludedBatches
+          }
+        });
       } else {
         // Server Analysis
         let endpoint = '';
@@ -362,8 +378,9 @@ function App() {
       }
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Analysis failed');
-    } finally {
       setLoading(false);
+    } finally {
+      if (!isLocalMode) setLoading(false);
     }
   };
 
