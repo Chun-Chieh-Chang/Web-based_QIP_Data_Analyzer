@@ -34,6 +34,8 @@ function App() {
 
   // Web Worker Ref
   const workerRef = useRef(null);
+  const [showLongLoading, setShowLongLoading] = useState(false);
+  const loadingTimerRef = useRef(null);
 
   // Initialize Web Worker
   useEffect(() => {
@@ -62,10 +64,14 @@ function App() {
           }
           break;
         case 'ANALYSIS_SUCCESS':
+          if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+          setShowLongLoading(false);
           setData(payload.result);
           setLoading(false);
           break;
         case 'ERROR':
+          if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+          setShowLongLoading(false);
           setError(payload.message);
           setLoading(false);
           break;
@@ -76,6 +82,7 @@ function App() {
 
     return () => {
       if (workerRef.current) workerRef.current.terminate();
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     };
   }, []);
 
@@ -356,8 +363,15 @@ function App() {
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
     setLoading(true);
+    setShowLongLoading(false);
     setError('');
     setData(null);
+
+    // Setup long-loading timer (5 seconds)
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    loadingTimerRef.current = setTimeout(() => {
+      setShowLongLoading(true);
+    }, 5000);
 
     const queryParams = `product=${selectedProduct}&item=${selectedItem}&startBatch=${startBatch}&endBatch=${endBatch}`;
 
@@ -391,8 +405,14 @@ function App() {
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Analysis failed');
       setLoading(false);
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+      setShowLongLoading(false);
     } finally {
-      if (!isLocalMode) setLoading(false);
+      if (!isLocalMode) {
+        setLoading(false);
+        if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+        setShowLongLoading(false);
+      }
     }
   };
 
@@ -599,6 +619,11 @@ function App() {
         {loading && (
           <div style={{ textAlign: 'center', marginTop: '10rem' }}>
             <div className="spinner">Analysing data...</div>
+            {showLongLoading && (
+              <p style={{ marginTop: '1.5rem', color: 'var(--accent-color)', fontWeight: '600', animation: 'fadeIn 0.5s ease-out' }}>
+                處理的資料量較大，請稍後。
+              </p>
+            )}
           </div>
         )}
 
