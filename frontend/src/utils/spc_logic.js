@@ -124,10 +124,15 @@ export class SPCAnalysis {
     analyzeBatch(workbook, sheetName, cavityName = null, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // Use raw: false to get formatted strings for precision detection
+        const jsonFormatted = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+        // Use raw: true for calculations
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+
         if (json.length < 2) return { error: "Insufficient Data" };
 
-        const specs = this.getSpecs(json);
+        const specs = this.getSpecs(jsonFormatted);
         const header = json[0];
 
         // Check mode
@@ -163,11 +168,12 @@ export class SPCAnalysis {
 
             let rowVals = [];
             targetCols.forEach(idx => {
-                const rawVal = row[idx];
-                const v = parseFloat(rawVal);
+                const val = row[idx];
+                const formattedVal = jsonFormatted[i][idx];
+                const v = parseFloat(val);
                 if (!isNaN(v)) {
                     rowVals.push(v);
-                    rawSourceData.push(rawVal);
+                    rawSourceData.push(formattedVal);
                 }
             });
 
@@ -281,9 +287,13 @@ export class SPCAnalysis {
     analyzeCavity(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        const specs = this.getSpecs(json);
+
+        const jsonFormatted = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+
+        const specs = this.getSpecs(jsonFormatted);
         const header = json[0];
+        let rawSourceStrings = [];
 
         let cavityData = [];
 
@@ -298,8 +308,12 @@ export class SPCAnalysis {
                     if (endBatch !== null && i > Number(endBatch)) continue;
                     if (skipIndices.includes(i)) continue;
 
+                    const rawVal = jsonFormatted[i][idx];
                     const v = parseFloat(json[i][idx]);
-                    if (!isNaN(v)) vals.push(v);
+                    if (!isNaN(v)) {
+                        vals.push(v);
+                        rawSourceStrings.push(rawVal);
+                    }
                 }
                 if (vals.length > 2) {
                     const mean = getMean(vals);
@@ -326,8 +340,10 @@ export class SPCAnalysis {
         return {
             cavities: cavityData,
             specs: {
-                ...specs,
-                decimals: getPrecision(cavityData.map(c => c.mean)) // Use mean precision as proxy
+                target: specs.target,
+                usl: specs.usl,
+                lsl: specs.lsl,
+                decimals: Math.max(specs.precision, getPrecision(rawSourceStrings))
             }
         };
     }
@@ -336,9 +352,13 @@ export class SPCAnalysis {
     analyzeGroup(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return { error: "Sheet not found" };
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        const specs = this.getSpecs(json);
+
+        const jsonFormatted = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+
+        const specs = this.getSpecs(jsonFormatted);
         const header = json[0];
+        let rawSourceStrings = [];
 
         const cavityIndices = [];
         header.forEach((h, i) => { if (h && String(h).includes("穴")) cavityIndices.push(i); });
@@ -357,8 +377,12 @@ export class SPCAnalysis {
             const batchIdx = this.formatBatchName(row[0] || i);
             const vals = [];
             cavityIndices.forEach(idx => {
+                const rawVal = jsonFormatted[i][idx];
                 const v = parseFloat(row[idx]);
-                if (!isNaN(v)) vals.push(v);
+                if (!isNaN(v)) {
+                    vals.push(v);
+                    rawSourceStrings.push(rawVal);
+                }
             });
 
             if (vals.length > 0) {
@@ -374,8 +398,10 @@ export class SPCAnalysis {
         return {
             groups,
             specs: {
-                ...specs,
-                decimals: 2
+                target: specs.target,
+                usl: specs.usl,
+                lsl: specs.lsl,
+                decimals: Math.max(specs.precision, getPrecision(rawSourceStrings))
             }
         };
     }
