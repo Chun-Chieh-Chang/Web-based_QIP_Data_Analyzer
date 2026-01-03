@@ -502,32 +502,6 @@ function App() {
               </div>
             </div>
 
-            {/* Batch Exclusion Selection */}
-            {batches.length > 0 && selectedProduct && selectedItem && startBatch !== '' && endBatch !== '' && (
-              <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.8rem' }}>
-                <label style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.5rem', display: 'block' }}>Exclude Specific Batches (Uncheck to skip)</label>
-                <div style={{ maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', backgroundColor: '#f9f9f9', border: '1px solid #eee', borderRadius: '4px' }}>
-                  {batches.filter(b => b.index >= Number(startBatch) && b.index <= Number(endBatch)).map(b => (
-                    <div key={b.index} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem' }}>
-                      <input
-                        type="checkbox"
-                        id={`excl-${b.index}`}
-                        checked={!excludedBatches.includes(b.index)}
-                        onChange={() => {
-                          if (excludedBatches.includes(b.index)) {
-                            setExcludedBatches(excludedBatches.filter(idx => idx !== b.index));
-                          } else {
-                            setExcludedBatches([...excludedBatches, b.index]);
-                          }
-                        }}
-                        style={{ marginRight: '0.5rem', cursor: 'pointer' }}
-                      />
-                      <label htmlFor={`excl-${b.index}`} style={{ cursor: 'pointer', flex: 1 }}>{b.name}</label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -581,6 +555,33 @@ function App() {
         <button onClick={resetAll}>
           Reset
         </button>
+
+        {/* Batch Exclusion Selection - Moved below Reset */}
+        {batches.length > 0 && selectedProduct && selectedItem && startBatch !== '' && endBatch !== '' && (
+          <div style={{ marginTop: '1.5rem', borderTop: '2px dashed var(--border-color)', paddingTop: '1rem' }}>
+            <label style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.5rem', display: 'block', fontWeight: 'bold' }}>Exclude Specific Batches (Uncheck to skip)</label>
+            <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', backgroundColor: '#f9f9f9', border: '1px solid #eee', borderRadius: '4px' }}>
+              {batches.filter(b => b.index >= Number(startBatch) && b.index <= Number(endBatch)).map(b => (
+                <div key={b.index} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem' }}>
+                  <input
+                    type="checkbox"
+                    id={`excl-${b.index}`}
+                    checked={!excludedBatches.includes(b.index)}
+                    onChange={() => {
+                      if (excludedBatches.includes(b.index)) {
+                        setExcludedBatches(excludedBatches.filter(idx => idx !== b.index));
+                      } else {
+                        setExcludedBatches([...excludedBatches, b.index]);
+                      }
+                    }}
+                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                  />
+                  <label htmlFor={`excl-${b.index}`} style={{ cursor: 'pointer', flex: 1 }}>{b.name}</label>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{ color: 'var(--danger-color)', display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
