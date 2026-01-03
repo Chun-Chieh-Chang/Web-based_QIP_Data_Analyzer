@@ -22,6 +22,7 @@ function App() {
   const [batches, setBatches] = useState([]);
   const [startBatch, setStartBatch] = useState('');
   const [endBatch, setEndBatch] = useState('');
+  const [excludedBatches, setExcludedBatches] = useState([]); // Array of indices to skip
 
   // Local Mode State
   const [isLocalMode, setIsLocalMode] = useState(false);
@@ -49,6 +50,7 @@ function App() {
     setProducts([]);
     setItems([]);
     setBatches([]);
+    setExcludedBatches([]);
   };
 
   // Check Backend Status on Mount
@@ -239,6 +241,7 @@ function App() {
           if (b.length > 0) {
             setStartBatch(b[0].index);
             setEndBatch(b[b.length - 1].index);
+            setExcludedBatches([]);
           }
         }
       } else {
@@ -249,6 +252,7 @@ function App() {
             if (res.data.batches.length > 0) {
               setStartBatch(res.data.batches[0].index);
               setEndBatch(res.data.batches[res.data.batches.length - 1].index);
+              setExcludedBatches([]);
             }
           })
           .catch(err => setError('Failed to load batches'));
@@ -260,7 +264,7 @@ function App() {
   useEffect(() => {
     setData(null);
     setError('');
-  }, [selectedProduct, selectedItem, selectedCavity, analysisType, startBatch, endBatch]);
+  }, [selectedProduct, selectedItem, selectedCavity, analysisType, startBatch, endBatch, excludedBatches]);
 
   // Items load on product change
   useEffect(() => {
@@ -327,11 +331,11 @@ function App() {
         // Local Analysis
         let result;
         if (analysisType === 'batch') {
-          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity, startBatch, endBatch);
+          result = spcEngine.analyzeBatch(workbook, selectedItem, selectedCavity, startBatch, endBatch, excludedBatches);
         } else if (analysisType === 'cavity') {
-          result = spcEngine.analyzeCavity(workbook, selectedItem, startBatch, endBatch);
+          result = spcEngine.analyzeCavity(workbook, selectedItem, startBatch, endBatch, excludedBatches);
         } else if (analysisType === 'group') {
-          result = spcEngine.analyzeGroup(workbook, selectedItem, startBatch, endBatch);
+          result = spcEngine.analyzeGroup(workbook, selectedItem, startBatch, endBatch, excludedBatches);
         }
 
         if (result.error) throw new Error(result.error);
@@ -466,6 +470,33 @@ function App() {
                 </select>
               </div>
             </div>
+
+            {/* Batch Exclusion Selection */}
+            {batches.length > 0 && selectedProduct && selectedItem && startBatch !== '' && endBatch !== '' && (
+              <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.8rem' }}>
+                <label style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.5rem', display: 'block' }}>Exclude Specific Batches (Uncheck to skip)</label>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', backgroundColor: '#f9f9f9', border: '1px solid #eee', borderRadius: '4px' }}>
+                  {batches.filter(b => b.index >= Number(startBatch) && b.index <= Number(endBatch)).map(b => (
+                    <div key={b.index} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem' }}>
+                      <input
+                        type="checkbox"
+                        id={`excl-${b.index}`}
+                        checked={!excludedBatches.includes(b.index)}
+                        onChange={() => {
+                          if (excludedBatches.includes(b.index)) {
+                            setExcludedBatches(excludedBatches.filter(idx => idx !== b.index));
+                          } else {
+                            setExcludedBatches([...excludedBatches, b.index]);
+                          }
+                        }}
+                        style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                      />
+                      <label htmlFor={`excl-${b.index}`} style={{ cursor: 'pointer', flex: 1 }}>{b.name}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
