@@ -884,12 +884,20 @@ function App() {
                       paper_bgcolor: 'rgba(0,0,0,0)',
                       plot_bgcolor: 'rgba(0,0,0,0)',
                       font: { family: 'Inter', size: 12 },
-                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45 },
-                      yaxis: { gridcolor: '#f1f5f9', zeroline: false },
+                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45, automargin: true },
+                      yaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
                       showlegend: true,
-                      legend: { orientation: 'h', y: 1.12 }
+                      legend: { orientation: 'h', y: 1.12 },
+                      hovermode: 'closest',
+                      dragmode: 'zoom',
+                      doubleclick: 'reset+autosize'
                     }}
-                    config={{ responsive: true, displayModeBar: false }}
+                    config={{
+                      responsive: true,
+                      displayModeBar: 'hover',
+                      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud', 'editInChartStudio', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toggleSpikelines', 'hoverClosestCartesian', 'hoverCompareCartesian'],
+                      displaylogo: false
+                    }}
                     style={{ width: '100%' }}
                   />
                 </div>
@@ -942,12 +950,18 @@ function App() {
                       paper_bgcolor: 'rgba(0,0,0,0)',
                       plot_bgcolor: 'rgba(0,0,0,0)',
                       font: { family: 'Inter', size: 11 },
-                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45 },
-                      yaxis: { gridcolor: '#f1f5f9', zeroline: false },
+                      xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45, automargin: true },
+                      yaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
                       showlegend: true,
-                      legend: { orientation: 'h', y: 1.15 }
+                      legend: { orientation: 'h', y: 1.15 },
+                      doubleclick: 'reset+autosize'
                     }}
-                    config={{ responsive: true, displayModeBar: false }}
+                    config={{
+                      responsive: true,
+                      displayModeBar: 'hover',
+                      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud', 'editInChartStudio', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toggleSpikelines', 'hoverClosestCartesian', 'hoverCompareCartesian'],
+                      displaylogo: false
+                    }}
                     style={{ width: '100%' }}
                   />
                 </div>
