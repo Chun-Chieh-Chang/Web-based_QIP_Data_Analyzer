@@ -412,6 +412,62 @@ function App() {
     return 'Need Improvement';
   };
 
+  // Automated Expert Diagnostic Engine (Senior Authority Logic)
+  const generateExpertDiagnostic = (data, type) => {
+    if (!data) return [];
+    let insights = [];
+
+    if (type === 'batch') {
+      const cpk = data.capability?.cpk || data.capability?.xbar_cpk || 0;
+      const ppk = data.capability?.ppk || data.capability?.xbar_ppk || 0;
+      const mean = data.stats?.mean || data.stats?.xbar_mean || 0;
+      const target = data.specs?.target || 0;
+      const usl = data.specs?.usl || 0;
+      const lsl = data.specs?.lsl || 0;
+      const violationsCount = (data.violations?.length || 0) + (data.violations?.xbar_violations?.length || 0) + (data.violations?.r_violations?.length || 0);
+
+      // 1. Capability Assessment
+      if (cpk >= 1.67) insights.push(`✅ **精英級製程**: Cpk (${cpk.toFixed(3)}) 現狀極佳，公差帶寬裕，物理精度高於標竿水平。`);
+      else if (cpk >= 1.33) insights.push(`🟢 **穩定製程**: Cpk (${cpk.toFixed(3)}) 符合國際品質要求 (Automotive standard)。`);
+      else if (cpk > 0) insights.push(`⚠️ **製程能力不足**: Cpk (${cpk.toFixed(3)}) 低於理想指標，建議檢查模具物理磨損或基本工藝參數。`);
+
+      // 2. Stability Analysis (Cpk vs Ppk)
+      const diff = Math.abs(cpk - ppk);
+      if (cpk > 0 && ppk > 0) {
+        if (diff / cpk > 0.1) {
+          insights.push(`🔍 **穩定性低 (Stability Index Issue)**: Cpk 與 Ppk 差異显著 (${((diff / cpk) * 100).toFixed(1)}%)。暗示「批次間」波動較劇烈，應重點檢查材料一致性、模溫機波動或不同班別的操作差異。`);
+        } else {
+          insights.push(`✨ **穩定性極佳**: Cpk 與 Ppk 數據契合，顯示製程具備高度的可重複性。`);
+        }
+      }
+
+      // 3. Centering (Centering / k-index)
+      if (target !== 0 && usl !== lsl) {
+        const offset = ((mean - target) / (usl - lsl)) * 100;
+        if (Math.abs(offset) > 10) {
+          insights.push(`📍 **中心漂移**: 均值偏向${offset > 0 ? '上限 (USL)' : '下限 (LSL)'}約 ${Math.abs(offset).toFixed(1)}%。建議調整**射出壓力**或**保壓時間**以拉回基準中值。`);
+        }
+      }
+
+      // 4. Violation Handling
+      if (violationsCount > 0) {
+        insights.push(`🔴 **異常警示**: 圖中發現 ${violationsCount} 個統計異常點。這代表製程中存在「特殊原因」，請檢查是否有**更換材料批次**、**機台警報(Alarm)** 或**模具清理**動作。`);
+      } else {
+        insights.push(`🛡️ **統計受控**: 目前所有點位均在管制界限內，製程處於統計受控狀態。`);
+      }
+    } else if (type === 'cavity') {
+      const minCpk = data.cavities?.length > 0 ? Math.min(...data.cavities.map(c => c.cpk)) : 0;
+      const maxCpk = data.cavities?.length > 0 ? Math.max(...data.cavities.map(c => c.cpk)) : 0;
+      if (maxCpk - minCpk > 0.3) {
+        insights.push(`🚩 **穴別不平衡 (Balance Issue)**: 不同模穴間能力差異大。應針對 Cpk 最差的模穴檢查其**成品頂出行程**或**排氣阻塞**。`);
+      } else {
+        insights.push(`✅ **模穴平衡良好**: 各穴性能分佈均勻。`);
+      }
+    }
+
+    return insights;
+  };
+
   return (
     <div className="app-container">
       <aside className="sidebar">
@@ -608,6 +664,32 @@ function App() {
 
         {data && analysisType === 'batch' && data.capability && (
           <>
+            {/* Dynamic Expert Summary Engine */}
+            <div className="card" style={{
+              background: 'linear-gradient(135deg, #1d39c4 0%, #001529 100%)',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 4px 15px rgba(29, 57, 196, 0.3)'
+            }}>
+              <h2 style={{ color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <TrendingUp size={24} /> 自動化專家診斷報告 (Automated Diagnostic)
+              </h2>
+              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {generateExpertDiagnostic(data, 'batch').map((msg, i) => (
+                  <div key={i} style={{
+                    padding: '0.8rem',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(5px)',
+                    fontSize: '0.95rem',
+                    lineHeight: '1.5'
+                  }}>
+                    {msg.split('**').map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="card">
               <h2>Capability Summary: {selectedItem} {selectedCavity && `(${selectedCavity})`}</h2>
               <div className="stats-grid" style={{ marginTop: '1rem' }}>
