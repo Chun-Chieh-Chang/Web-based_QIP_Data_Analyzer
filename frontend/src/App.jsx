@@ -24,6 +24,7 @@ function App() {
   const [startBatch, setStartBatch] = useState('');
   const [endBatch, setEndBatch] = useState('');
   const [excludedBatches, setExcludedBatches] = useState([]); // Array of indices to skip
+  const [showViolationDetails, setShowViolationDetails] = useState(false); // Collapsible violation details
 
   // Local Mode State
   const [isLocalMode, setIsLocalMode] = useState(false);
@@ -721,22 +722,38 @@ function App() {
               </div>
 
               {/* Handle violations for both Individual-MR and Xbar-R charts */}
-              {(data.violations && Array.isArray(data.violations) && data.violations.length > 0) ||
+              {((data.violations && Array.isArray(data.violations) && data.violations.length > 0) ||
                 (data.violations && data.violations.xbar_violations && data.violations.xbar_violations.length > 0) ||
-                (data.violations && data.violations.r_violations && data.violations.r_violations.length > 0) ? (
-                <div className="violation-list">
-                  <h4 style={{ margin: '1rem 0 0.5rem 0' }}>SPC Violations Detected:</h4>
-                  {/* Show Individual-MR violations */}
-                  {data.violations && Array.isArray(data.violations) && data.violations.map((v, i) => <div key={`mr-${i}`}><AlertCircle size={14} /> {v}</div>)}
-                  {/* Show Xbar violations */}
-                  {data.violations && data.violations.xbar_violations && data.violations.xbar_violations.map((v, i) => <div key={`xbar-${i}`}><AlertCircle size={14} /> {v}</div>)}
-                  {/* Show R violations */}
-                  {data.violations && data.violations.r_violations && data.violations.r_violations.map((v, i) => <div key={`r-${i}`}><AlertCircle size={14} /> {v}</div>)}
+                (data.violations && data.violations.r_violations && data.violations.r_violations.length > 0)) ? (
+                <div className="violation-list" style={{ marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff1f0', padding: '0.6rem 1rem', borderRadius: '6px', border: '1px solid #ffa39e' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cf1322', fontWeight: 'bold' }}>
+                      <AlertCircle size={18} />
+                      <span>偵測到統計異常點 ({(data.violations?.xbar_violations?.length || 0) + (data.violations?.r_violations?.length || 0) + (Array.isArray(data.violations) ? data.violations.length : 0)} 處)</span>
+                    </div>
+                    <button
+                      onClick={() => setShowViolationDetails(!showViolationDetails)}
+                      style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', backgroundColor: '#fff', border: '1px solid #d9d9d9', color: '#666' }}
+                    >
+                      {showViolationDetails ? '隱藏細節' : '顯示詳細清單'}
+                    </button>
+                  </div>
+
+                  {showViolationDetails && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.8rem', backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
+                      {/* Show Individual-MR violations */}
+                      {data.violations && Array.isArray(data.violations) && data.violations.map((v, i) => <div key={`mr-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                      {/* Show Xbar violations */}
+                      {data.violations && data.violations.xbar_violations && data.violations.xbar_violations.map((v, i) => <div key={`xbar-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                      {/* Show R violations */}
+                      {data.violations && data.violations.r_violations && data.violations.r_violations.map((v, i) => <div key={`r-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ color: 'var(--success-color)', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <CheckCircle2 size={16} />
-                  <span>Process is in statistical control.</span>
+                  <span>所有點位均在統計管制界限內。</span>
                 </div>
               )}
 
