@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SPCAnalysis } from './utils/spc_logic';
@@ -119,30 +120,94 @@ function App() {
     if (!data || !selectedProduct || !selectedItem) return;
 
     try {
-      const response = await axios.post(`${API_BASE}/export/excel`, {
-        product: selectedProduct,
-        item: selectedItem,
-        startBatch: startBatch,
-        endBatch: endBatch,
-        analysisType: analysisType,
-        cavity: selectedCavity,
-        analysis_data: data
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        responseType: 'blob'  // Important: receive response as blob
-      });
+      if (isLocalMode) {
+        // Local Mode: Generate Excel using XLSX library
+        const wb = XLSX.utils.book_new();
 
-      // Create a download link for the Excel file
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', response.headers['content-disposition']?.split('filename=')[1] || `QIP_Analysis_${selectedProduct}_${selectedItem}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+        // 1. Prepare Summary Data
+        const summaryData = [
+          ["QIP Analysis Report", "", ""],
+          ["Part Number:", selectedProduct, ""],
+          ["Inspection Item:", selectedItem, ""],
+          ["Analysis Type:", analysisType === 'batch' ? "Batch Analysis" : analysisType === 'cavity' ? "Cavity Comparison" : "Group Trend", ""],
+          ["Generated:", new Date().toLocaleString(), ""],
+          ["", "", ""],
+          ["Capability Summary", "", ""]
+        ];
+
+        if (analysisType === 'batch' && data.capability) {
+          summaryData.push(["Cpk", data.capability.cpk || data.capability.xbar_cpk, ""]);
+          summaryData.push(["Ppk", data.capability.ppk || data.capability.xbar_ppk, ""]);
+          summaryData.push(["Mean", data.stats?.mean || data.stats?.xbar_mean, ""]);
+          summaryData.push(["Target", data.specs?.target, ""]);
+          summaryData.push(["USL", data.specs?.usl, ""]);
+          summaryData.push(["LSL", data.specs?.lsl, ""]);
+        }
+
+        const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, ws_summary, "Summary");
+
+        // 2. Prepare Detailed Data
+        let detailData = [];
+        if (analysisType === 'batch' && data.data) {
+          detailData.push(["Batch Label", "Value", "UCL", "LCL", "CL"]);
+          const { labels, values } = data.data;
+          const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
+
+          labels.forEach((label, i) => {
+            detailData.push([
+              label,
+              values[i],
+              ucl_x || ucl_xbar,
+              lcl_x || lcl_xbar,
+              cl_x || cl_xbar
+            ]);
+          });
+        } else if (analysisType === 'cavity' && data.cavities) {
+          detailData.push(["Cavity Name", "Mean", "Cpk"]);
+          data.cavities.forEach(c => {
+            detailData.push([c.cavity, c.mean, c.cpk]);
+          });
+        } else if (analysisType === 'group' && data.groups) {
+          detailData.push(["Batch", "Min", "Max", "Avg"]);
+          data.groups.forEach(g => {
+            detailData.push([g.batch, g.min, g.max, g.avg]);
+          });
+        }
+
+        if (detailData.length > 0) {
+          const ws_data = XLSX.utils.aoa_to_sheet(detailData);
+          XLSX.utils.book_append_sheet(wb, ws_data, "Data");
+        }
+
+        // Write and download
+        XLSX.writeFile(wb, `QIP_Analysis_${selectedProduct}_${selectedItem}.xlsx`);
+      } else {
+        // Server Mode: Original Axios implementation
+        const response = await axios.post(`${API_BASE}/export/excel`, {
+          product: selectedProduct,
+          item: selectedItem,
+          startBatch: startBatch,
+          endBatch: endBatch,
+          analysisType: analysisType,
+          cavity: selectedCavity,
+          analysis_data: data
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          responseType: 'blob'
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', response.headers['content-disposition']?.split('filename=')[1] || `QIP_Analysis_${selectedProduct}_${selectedItem}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }
     } catch (err) {
       setError('Export failed: ' + err.message);
     }
