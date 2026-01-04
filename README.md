@@ -1,110 +1,71 @@
-# Web-based SPC Analysis Tool
+# Web-based SPC Analysis Tool (v4.6)
 
-## 1. Overview
-A professional, standalone Statistical Process Control (SPC) analysis tool. It allows engineers to analyze manufacturing process data directly in a modern web browser, featuring high-performance local processing and optional server-side integration.
+## 1. Project Architecture (Modular MECE Design)
+The system is built on a **Dual-Runtime Architecture** to ensure flexibility and data privacy.
 
-## 2. Key Features
-- **Dual Runtime Support**: 
-  - **Local Mode (Default)**: Process Excel files entirely in the browser (client-side). No data leaves your machine.
-  - **Server Mode**: Optional integration with a Python/FastAPI backend for centralized data management.
-- **Multifaceted Analysis**:
-  - **Batch Analysis**: Automated selection between Individual-MR (for single cavity) and Xbar-R (for multi-cavity) control charts.
-  - **Cavity Comparison**: Compare performance (Cpk, Mean) across multiple machine cavities (up to 32 supported).
-  - **Group Trend**: Visualize Min/Max/Average trends across production batches.
-- **Statistical Rigor**: Proper calculation of UCL, LCL, CL, Cpk, and Ppk using industry-standard formulas.
-- **Modern User Experience**:
-  - **Web Worker Engine**: Heavy data processing runs in the background to keep the UI responsive.
-  - **Automatic Precision Matching**: Statistical results automatically match the decimal places found in the source Excel data.
-  - **Batch Exclusion**: Interactive filtering to remove outliers or non-representative batches.
-  - **Export to Excel**: Specialized reports with summary and detailed data tabs.
+### 1.1 Local Mode (Client-Side)
+- **Engine**: React + Web Worker (Background Processing).
+- **Scope**: Processes data entirely within the browser using `spc_logic.js`.
+- **Constraint**: Optimized for molds with up to 10 cavities.
 
-## 3. Installation & Getting Started
-
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v14 or later)
-- (Optional) [Python](https://python.org/) 3.7+ (only required for Server Mode)
-
-### Quick Setup
-1. **Frontend Dependencies**:
-   ```bash
-   cd frontend
-   npm install
-   ```
-2. **Backend Dependencies (Optional)**:
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-### Running the App
-- **For All Users**: Run `StartApplication.bat` (Windows) or `StartApplication.ps1` (PowerShell).
-- **Manual Start**:
-  - Frontend: `cd frontend && npm run dev` (Default: http://localhost:5173)
-  - Backend: `cd backend && python main.py`
-
-## 4. Technical Specifications
-
-### Data Format Requirements
-Your Excel files must follow these structure conventions:
-- **Specification Limits**: Cell **B2** (Target), **C2** (USL), **D2** (LSL).
-- **Cavity Detection**: Columns containing "穴" (e.g., "1穴", "2穴") are automatically treated as measurement subgroups.
-- **Batch Labels**: The first column (Column A) should contain production lot/batch numbers.
-
-### ISO 7870-2 Compliance & Decision Rules
-This tool is aligned with **ISO 7870-2:2013 (Shewhart Control Charts)**. It implements the following stability criteria (Nelson Rules 1-6) to detect assignable causes:
-
-| Rule | Description | Statistical Signal |
-| :--- | :--- | :--- |
-| **Rule 1** | Beyond Limits | 1 point > 3σ from center line |
-| **Rule 2** | Shift in Mean | 9 consecutive points on one side of center line |
-| **Rule 3** | Trend | 6 consecutive points steadily increasing or decreasing |
-| **Rule 4** | Alternation | 14 consecutive points alternating up and down |
-| **Rule 5** | Near-Control | 2 out of 3 points > 2σ (same side) |
-| **Rule 6** | Variance Spread | 4 out of 5 points > 1σ (same side) |
-
-> **Visual Feature**: The X-bar chart includes background shading for **Zone A (±3σ)**, **Zone B (±2σ)**, and **Zone C (±1σ)** to facilitate rapid visual assessment of these rules.
-
-### Subgroup Logic & Statistical Constants
-The subgroup size (n) is critical for calculating process capability. This tool automatically determines the appropriate size based on your selection:
-
-#### 1. Individual-MR (Specific Cavity)
-- **Subgroup Size (n)**: **1**.
-- **Logic**: Used when a specific cavity is selected or only one data column exists.
-- **Variation**: Uses **Moving Range (MR)** between adjacent batches.
-- **Constant**: Uses d2 = 1.128 to estimate **sigma_within**.
-
-#### 2. Xbar-R (Average of All Cavities)
-- **Subgroup Size (n)**: **Dynamic**, equal to the number of detected cavity columns.
-- **Logic**: Used for multi-cavity analysis ("All Cavities").
-- **Variation**: Uses **Average Range (R-bar)** across cavities within each batch.
-- **Constant**: Automatically maps A2, D3, D4, and d2 based on the subgroup size (n).
-
-### Impact on Cpk vs. Ppk
-The subgroup size directly affects the capability indices:
-- **Cpk (Capability)**: Depends on **sigma_within** (R-bar/d2). Since **d2** is linked to **n**, an incorrect subgroup size will lead to inaccurate Cpk values.
-- **Ppk (Performance)**: Depends on **sigma_overall** (Sample Standard Deviation). This calculates the total variation of all data points and is **independent** of subgroup sizing or batching.
-
-### Mode Comparison Summary
-| Feature | Local Mode (Browser) | Server Mode (Python) |
-| :--- | :--- | :--- |
-| **Max Subgroup Size (n)** | **10** (Capped) | **32** (Extended) |
-| **Calculation Engine** | Hardcoded constant tables | Tables + Approximation formulas |
-| **I-MR Pattern** | Sigma_w = MR-bar / 1.128 | Same |
-| **Xbar-R Pattern** | Sigma_w = R-bar / d2(n) | Same |
-| **Recommendation** | Molds with <= 10 cavities | High-cavity molds (> 10 cavities) |
-
-> **Note**: In **Local Mode**, if the data contains more than 10 cavities, the system will fallback to constants for $n=10$ to maintain stability. For precision in 16-cavity or 32-cavity environments, please use **Server Mode**.
-
-## 5. Deployment
-The tool is fully compatible with static hosting (e.g., GitHub Pages).
-1. Build the frontend: `npm run build`.
-2. Deploy the `dist` folder.
-3. The app will automatically enter "Local Mode" when deployed to `github.io`.
-
-## 6. Project Structure
-- `frontend/`: React source code, Web Worker logic, and styling.
-- `backend/`: Python FastAPI implementation for server-side analysis.
-- `docs/`: User manual and technical documentation.
+### 1.2 Server Mode (Backend-Side)
+- **Engine**: Python (FastAPI) + NumPy/Pandas.
+- **Scope**: Centralized analysis via `backend/analysis.py`.
+- **Capability**: Extended support for up to 32 cavities with high-precision approximation formulas.
 
 ---
-*Created by [Antigravity](https://github.com/Chun-Chieh-Chang/Web-based_SPC_Analyzer) - 2026-01-03*
+
+## 2. Core Logic & Statistical Engine
+Mutually exclusive components handling the "math" behind the visuals.
+
+### 2.1 Statistical Calculations
+- **Sigma Within ($\sigma_w$)**:
+  - $n=1$: Calculated via Moving Range (MR̄ / 1.128).
+  - $n>1$: Calculated via Average Range (R̄ / d₂).
+- **Sigma Overall ($\sigma_o$)**: Standard sample deviation including all process variation.
+- **Indices**: Automatic calculation of **Cp, Cpk, Pp, Ppk**.
+
+### 2.2 Stability Monitoring (ISO 7870-2)
+Implemented **Nelson Rules 1-6** to detect assignable causes:
+- **Rule 1**: Points beyond ±3σ.
+- **Rule 2**: 9 points on one side of Mean.
+- **Rules 3-4**: Trend and Alternation detection.
+- **Rules 5-6**: Multi-point violations in Zone A/B.
+
+---
+
+## 3. User Experience & UI System
+- **Interactive Dashboard**: Modern React interface with real-time filtering (Batch Exclusion).
+- **Advanced Visuals**: 
+  - **Dynamic Shading**: Background zones (±1σ, ±2σ, ±3σ) for rapid visual audit.
+  - **Expert Diagnostic**: Automated textual insights based on stability and capability gaps.
+  - **Minitab-style Histograms**: Capability reports with normal distribution overlays.
+
+---
+
+## 4. Data Management & Auxiliary Utilities
+### 4.1 Data Processing
+- **Excel Handling**: Memory-efficient parsing supporting large datasets.
+- **Precision Matching**: Automatic decimal alignment with source Excel formatting.
+- **Export System**: Specialized Excel report generator (Summary + Detail sheets).
+
+### 4.2 Legacy & Extension Tools
+Located in `/Nelson Rules` and `/NormalDistributionPlot`:
+- **VBA Modules**: standalone Excel macros for offline Nelson Rule tagging and Normal Distribution plotting.
+
+---
+
+## 5. Getting Started & Deployment
+### 5.1 Installation
+1. **Frontend**: `cd frontend && npm install`
+2. **Backend (Optional)**: `cd backend && pip install -r requirements.txt`
+
+### 5.2 Execution
+- **One-Click Start**: Run `StartApplication.bat`.
+- **Manual**: `npm run dev` (Frontend) | `python main.py` (Backend).
+
+### 5.3 Deployment
+Fully compatible with **GitHub Pages** (auto-activates Local Mode).
+
+---
+*Maintained under MECE Principles - 2026-01-04*
