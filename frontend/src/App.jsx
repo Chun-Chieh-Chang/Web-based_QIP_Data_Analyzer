@@ -1287,8 +1287,8 @@ function App() {
                   xanchor: 'left',
                   y: 0.95
                 },
-                height: 520,
-                margin: { t: 90, b: 80, l: 60, r: 20 },
+                height: 500,
+                margin: { t: 90, b: 70, l: 60, r: 25 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { family: 'Inter', size: 11 },
@@ -1316,7 +1316,7 @@ function App() {
                 displayModeBar: 'hover',
                 displaylogo: false
               }}
-              style={{ width: '100vw', maxWidth: '1000px' }}
+              style={{ width: '100%' }}
             />
 
             {/* Interpretation Hint for Group Trend */}
