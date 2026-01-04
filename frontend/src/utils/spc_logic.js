@@ -206,7 +206,7 @@ export class SPCAnalysis {
         const ppk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * overall_std), (mean - specs.lsl) / (3 * overall_std)) : null;
 
         // --- Nelson Rules Detection ---
-        const violations_detail = this.detectNelsonRules(values, mean, ucl_x, lcl_x, labels);
+        const violations_detail = this.detectNelsonRules(values, mean, ucl_x, lcl_x, labels, within_std);
         const xbar_violations = violations_detail.map(v => v.message);
         const r_violations = [];
         const current_r_values = isXbar ? rangeValues : mr;
@@ -280,8 +280,14 @@ export class SPCAnalysis {
         };
     }
 
-    detectNelsonRules(data, cl, ucl, lcl, labels) {
+    detectNelsonRules(data, cl, ucl, lcl, labels, sigma) {
         const violations = [];
+        if (sigma <= 0) return [];
+
+        const z1_u = cl + 1 * sigma;
+        const z1_l = cl - 1 * sigma;
+        const z2_u = cl + 2 * sigma;
+        const z2_l = cl - 2 * sigma;
 
         // Rule 1: One point beyond 3 sigma
         data.forEach((v, i) => {
@@ -362,6 +368,32 @@ export class SPCAnalysis {
                         index: i,
                         message: `Rule 4: 14 points alternating direction at point ${labels[i]}`
                     });
+                }
+            }
+        }
+
+        // Rule 5: 2 out of 3 points > 2σ (same side)
+        if (data.length >= 3) {
+            for (let i = 2; i < data.length; i++) {
+                const window = data.slice(i - 2, i + 1);
+                if (window.filter(v => v > z2_u).length >= 2) {
+                    violations.push({ rule: "Rule 5", index: i, message: `Rule 5: 2 of 3 points > 2σ (Upper) at point ${labels[i]}` });
+                }
+                if (window.filter(v => v < z2_l).length >= 2) {
+                    violations.push({ rule: "Rule 5", index: i, message: `Rule 5: 2 of 3 points > 2σ (Lower) at point ${labels[i]}` });
+                }
+            }
+        }
+
+        // Rule 6: 4 out of 5 points > 1σ (same side)
+        if (data.length >= 5) {
+            for (let i = 4; i < data.length; i++) {
+                const window = data.slice(i - 4, i + 1);
+                if (window.filter(v => v > z1_u).length >= 4) {
+                    violations.push({ rule: "Rule 6", index: i, message: `Rule 6: 4 of 5 points > 1σ (Upper) at point ${labels[i]}` });
+                }
+                if (window.filter(v => v < z1_l).length >= 4) {
+                    violations.push({ rule: "Rule 6", index: i, message: `Rule 6: 4 of 5 points > 1σ (Lower) at point ${labels[i]}` });
                 }
             }
         }

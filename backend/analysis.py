@@ -261,10 +261,16 @@ class QIPAnalysis:
             return {"error": f"SPC calculation failed: {str(e)}"}
 
     def detect_violations(self, data, cl, ucl, lcl, sigma) -> List[Dict[str, Any]]:
-        """Detect SPC violations using Nelson Rules 1-4"""
+        """Detect SPC violations using Nelson Rules 1-6 (ISO 7870-2 compliant)"""
         if sigma <= 0: return []
         violations = []
         
+        # Pre-calculate zones
+        z1_u = cl + 1 * sigma
+        z1_l = cl - 1 * sigma
+        z2_u = cl + 2 * sigma
+        z2_l = cl - 2 * sigma
+
         # Rule 1: One point beyond 3 sigma from center line
         for i, v in enumerate(data):
             if v > ucl or v < lcl:
@@ -317,12 +323,10 @@ class QIPAnalysis:
                 trend = 0
 
         # Rule 4: 14 (or more) points in a row alternate in direction, increasing then decreasing
-        # This means diff1 * diff2 < 0 for 13 consecutive diffs
         if len(data) >= 14:
             for i in range(13, len(data)):
                 is_alternating = True
                 for j in range(i - 12, i + 1):
-                    # Check if (data[j] - data[j-1]) and (data[j-1] - data[j-2]) have different signs
                     diff1 = data[j] - data[j-1]
                     diff2 = data[j-1] - data[j-2]
                     if diff1 * diff2 >= 0:
@@ -334,6 +338,28 @@ class QIPAnalysis:
                         "index": i,
                         "message": f"Rule 4: 14 points alternating direction at point {i+1}"
                     })
+
+        # Rule 5: 2 out of 3 points > 2 sigma (same side)
+        if len(data) >= 3:
+            for i in range(2, len(data)):
+                window = data[i-2 : i+1]
+                # Upper side
+                if sum(1 for v in window if v > z2_u) >= 2:
+                    violations.append({"rule": "Rule 5", "index": i, "message": f"Rule 5: 2 of 3 points > 2σ (Upper) at point {i+1}"})
+                # Lower side
+                if sum(1 for v in window if v < z2_l) >= 2:
+                    violations.append({"rule": "Rule 5", "index": i, "message": f"Rule 5: 2 of 3 points > 2σ (Lower) at point {i+1}"})
+
+        # Rule 6: 4 out of 5 points > 1 sigma (same side)
+        if len(data) >= 5:
+            for i in range(4, len(data)):
+                window = data[i-4 : i+1]
+                # Upper side
+                if sum(1 for v in window if v > z1_u) >= 4:
+                    violations.append({"rule": "Rule 6", "index": i, "message": f"Rule 6: 4 of 5 points > 1σ (Upper) at point {i+1}"})
+                # Lower side
+                if sum(1 for v in window if v < z1_l) >= 4:
+                    violations.append({"rule": "Rule 6", "index": i, "message": f"Rule 6: 4 of 5 points > 1σ (Lower) at point {i+1}"})
 
         return violations
 

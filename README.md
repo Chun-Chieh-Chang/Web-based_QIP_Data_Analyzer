@@ -50,6 +50,20 @@ Your Excel files must follow these structure conventions:
 - **Cavity Detection**: Columns containing "穴" (e.g., "1穴", "2穴") are automatically treated as measurement subgroups.
 - **Batch Labels**: The first column (Column A) should contain production lot/batch numbers.
 
+### ISO 7870-2 Compliance & Decision Rules
+This tool is aligned with **ISO 7870-2:2013 (Shewhart Control Charts)**. It implements the following stability criteria (Nelson Rules 1-6) to detect assignable causes:
+
+| Rule | Description | Statistical Signal |
+| :--- | :--- | :--- |
+| **Rule 1** | Beyond Limits | 1 point > 3σ from center line |
+| **Rule 2** | Shift in Mean | 9 consecutive points on one side of center line |
+| **Rule 3** | Trend | 6 consecutive points steadily increasing or decreasing |
+| **Rule 4** | Alternation | 14 consecutive points alternating up and down |
+| **Rule 5** | Near-Control | 2 out of 3 points > 2σ (same side) |
+| **Rule 6** | Variance Spread | 4 out of 5 points > 1σ (same side) |
+
+> **Visual Feature**: The X-bar chart includes background shading for **Zone A (±3σ)**, **Zone B (±2σ)**, and **Zone C (±1σ)** to facilitate rapid visual assessment of these rules.
+
 ### Subgroup Logic & Statistical Constants
 The subgroup size (n) is critical for calculating process capability. This tool automatically determines the appropriate size based on your selection:
 

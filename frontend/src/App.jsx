@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
 import { SPCAnalysis } from './utils/spc_logic';
-import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck } from 'lucide-react';
 // SPCAnalysis now runs in worker.js
 import SPCWorker from './utils/spc.worker.js?worker';
 
@@ -862,12 +862,29 @@ function App() {
                     ]}
                     layout={{
                       title: {
-                        text: `<b>${selectedProduct}</b><br><span style="font-size: 14px; color: #64748b;">${selectedItem} - ${data.data.cavity_actual_name === "Average of All Cavities" ? "X-bar (均值)" : "Individual-X (單值)"}</span>`,
+                        text: `<b>${selectedProduct}</b><br><span style="font-size: 14px; color: #64748b;">${selectedItem} - ${data.data.cavity_actual_name === "Average of All Cavities" ? "X-bar (均值) [ISO 7870-2]" : "Individual-X (單值) [ISO 7870-2]"}</span>`,
                         font: { family: 'Inter', size: 16 },
                         x: 0,
                         xanchor: 'left',
                         y: 0.95
                       },
+                      shapes: (() => {
+                        const cl = data.control_limits.cl_xbar || data.control_limits.cl_x;
+                        const ucl = data.control_limits.ucl_xbar || data.control_limits.ucl_x;
+                        const lcl = data.control_limits.lcl_xbar || data.control_limits.lcl_x;
+                        const s = (ucl - cl) / 3;
+                        if (isNaN(s) || s <= 0) return [];
+
+                        const xEnd = data.data.labels.length - 1;
+                        return [
+                          // Zone C (±1σ)
+                          { type: 'rect', xref: 'x', yref: 'y', x0: 0, y0: cl - s, x1: xEnd, y1: cl + s, fillcolor: 'rgba(16, 185, 129, 0.05)', line: { width: 0 }, layer: 'below' },
+                          // Zone B (±2σ)
+                          { type: 'rect', xref: 'x', yref: 'y', x0: 0, y0: cl - 2 * s, x1: xEnd, y1: cl + 2 * s, fillcolor: 'rgba(245, 158, 11, 0.03)', line: { width: 0 }, layer: 'below' },
+                          // Zone A (±3σ)
+                          { type: 'rect', xref: 'x', yref: 'y', x0: 0, y0: lcl, x1: xEnd, y1: ucl, fillcolor: 'rgba(239, 68, 68, 0.02)', line: { width: 0 }, layer: 'below' }
+                        ];
+                      })(),
                       height: 500,
                       margin: { t: 90, b: 60, l: 60, r: 20 },
                       paper_bgcolor: 'rgba(0,0,0,0)',
@@ -970,6 +987,35 @@ function App() {
                     }}
                     style={{ width: '100%' }}
                   />
+                </div>
+
+                {/* ISO 7870-2 (Nelson Rules) Interpretation Guide */}
+                <div className="card" style={{
+                  backgroundColor: '#f0f7ff',
+                  borderLeft: '4px solid #006aff',
+                  borderRadius: '4px',
+                  padding: '1.5rem',
+                  marginTop: '10px',
+                  marginBottom: '30px'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#006aff' }}>
+                    <ShieldCheck size={20} /> ISO 7870-2 統計受控判讀指南 (Nelson Rules)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', lineHeight: '1.6', color: '#334155' }}>
+                      <li><strong>Rule 1 (界外)</strong>: 1 點超出管制界限 (3σ)。代表突發性異常。</li>
+                      <li><strong>Rule 2 (偏位)</strong>: 連續 9 點在中心線同側。代表平均值偏移。</li>
+                      <li><strong>Rule 3 (趨勢)</strong>: 連續 6 點持續上升或下降。暗示刀具磨損或趨勢。</li>
+                    </ul>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', lineHeight: '1.6', color: '#334155' }}>
+                      <li><strong>Rule 4 (震盪)</strong>: 連續 14 點上下交替。通常由系統性因素引起。</li>
+                      <li><strong>Rule 5 (鄰近)</strong>: 3 點中有 2 點超出 2σ。預示製程即將失控。</li>
+                      <li><strong>Rule 6 (集中)</strong>: 5 點中有 4 點超出 1σ。代表變異已顯著擴大。</li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#64748b', borderTop: '1px solid #d0e7ff', paddingTop: '8px' }}>
+                    * 註：背景陰影由深至淺分別代表 ±1σ (Zone C), ±2σ (Zone B), ±3σ (Zone A)。
+                  </div>
                 </div>
 
                 {data.distribution && (
