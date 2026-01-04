@@ -700,7 +700,7 @@ function App() {
                     </div>
                     <button
                       onClick={() => setShowViolationDetails(!showViolationDetails)}
-                      style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', backgroundColor: '#fff', border: '1px solid #d9d9d9', color: '#666' }}
+                      style={{ padding: '0.3rem 1rem', fontSize: '0.8rem', backgroundColor: '#334155', border: 'none', borderRadius: '4px', color: '#ffffff', fontWeight: '500', cursor: 'pointer' }}
                     >
                       {showViolationDetails ? '隱藏細節' : '顯示詳細清單'}
                     </button>
