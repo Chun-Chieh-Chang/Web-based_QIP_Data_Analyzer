@@ -50,9 +50,36 @@ Your Excel files must follow these structure conventions:
 - **Cavity Detection**: Columns containing "穴" (e.g., "1穴", "2穴") are automatically treated as measurement subgroups.
 - **Batch Labels**: The first column (Column A) should contain production lot/batch numbers.
 
-### Control Chart Formulas
-- **Individual-MR**: Uses Moving Range (MR̄)/d₂ for σ_within estimation.
-- **Xbar-R**: Uses Average Range (R̄)/d₂ for σ_within. Constants (A₂, D₃, D₄) are automatically assigned based on subgroup size (n=2 to 32).
+### Subgroup Logic & Statistical Constants
+The subgroup size (n) is critical for calculating process capability. This tool automatically determines the appropriate size based on your selection:
+
+#### 1. Individual-MR (Specific Cavity)
+- **Subgroup Size (n)**: **1**.
+- **Logic**: Used when a specific cavity is selected or only one data column exists.
+- **Variation**: Uses **Moving Range (MR)** between adjacent batches.
+- **Constant**: Uses d2 = 1.128 to estimate **sigma_within**.
+
+#### 2. Xbar-R (Average of All Cavities)
+- **Subgroup Size (n)**: **Dynamic**, equal to the number of detected cavity columns.
+- **Logic**: Used for multi-cavity analysis ("All Cavities").
+- **Variation**: Uses **Average Range (R-bar)** across cavities within each batch.
+- **Constant**: Automatically maps A2, D3, D4, and d2 based on the subgroup size (n).
+
+### Impact on Cpk vs. Ppk
+The subgroup size directly affects the capability indices:
+- **Cpk (Capability)**: Depends on **sigma_within** (R-bar/d2). Since **d2** is linked to **n**, an incorrect subgroup size will lead to inaccurate Cpk values.
+- **Ppk (Performance)**: Depends on **sigma_overall** (Sample Standard Deviation). This calculates the total variation of all data points and is **independent** of subgroup sizing or batching.
+
+### Mode Comparison Summary
+| Feature | Local Mode (Browser) | Server Mode (Python) |
+| :--- | :--- | :--- |
+| **Max Subgroup Size (n)** | **10** (Capped) | **32** (Extended) |
+| **Calculation Engine** | Hardcoded constant tables | Tables + Approximation formulas |
+| **I-MR Pattern** | Sigma_w = MR-bar / 1.128 | Same |
+| **Xbar-R Pattern** | Sigma_w = R-bar / d2(n) | Same |
+| **Recommendation** | Molds with <= 10 cavities | High-cavity molds (> 10 cavities) |
+
+> **Note**: In **Local Mode**, if the data contains more than 10 cavities, the system will fallback to constants for $n=10$ to maintain stability. For precision in 16-cavity or 32-cavity environments, please use **Server Mode**.
 
 ## 5. Deployment
 The tool is fully compatible with static hosting (e.g., GitHub Pages).
