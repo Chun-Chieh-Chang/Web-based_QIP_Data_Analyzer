@@ -741,12 +741,12 @@ function App() {
                 marginTop: '1.5rem',
                 padding: '1rem',
                 backgroundColor: '#f8fafc',
-                borderLeft: '4px solid #0f172a',
+                borderLeft: '4px solid #1e293b',
                 borderRadius: '4px',
                 fontSize: '0.9rem',
                 lineHeight: '1.6'
               }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
                   <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
@@ -773,7 +773,7 @@ function App() {
                   </li>
                 </ul>
                 <div style={{ marginTop: '1rem', padding: '0.8rem', backgroundColor: '#fff', border: '1px solid #bae7ff', borderRadius: '8px', fontSize: '0.85rem' }}>
-                  <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <Settings size={14} /> 核心統計公式與參數 (Statistical Reference)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

@@ -2,7 +2,7 @@
 
 :root {
   /* Premium Industrial Color Palette */
-  --primary-color: #0f172a;
+  --primary-color: #1e293b;
   --secondary-color: #64748b;
   --bg-color: #f8fafc;
   --sidebar-bg: #ffffff;
@@ -92,7 +92,7 @@ select:focus,
 input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.2);
 }
 
 button {
