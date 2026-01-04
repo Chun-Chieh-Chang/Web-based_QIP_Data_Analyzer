@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
 import { SPCAnalysis } from './utils/spc_logic';
-import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator } from 'lucide-react';
 // SPCAnalysis now runs in worker.js
 import SPCWorker from './utils/spc.worker.js?worker';
 
@@ -1185,6 +1185,48 @@ function App() {
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Ppk</span> <span style={{ fontWeight: 'bold', color: (data.capability.ppk || data.capability.xbar_ppk) >= 1.33 ? '#10b981' : '#ef4444' }}>{(data.capability.ppk || data.capability.xbar_ppk).toFixed(2)}</span></div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Cpm</span> <span>{data.capability.cpm?.toFixed(2) || '*'}</span></div>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Statistical Formula Reference */}
+                    <div className="card" style={{ marginTop: '20px', backgroundColor: '#fcfcfc', border: '1px dashed #cbd5e1', padding: '1.2rem' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#445566' }}>
+                        <Calculator size={18} /> 統計指標導引 (Statistical Formula Reference)
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                        <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', borderLeft: '3px solid #ef4444', paddingLeft: '8px' }}>
+                            組內標準差 (Within-subgroup StDev) - σ<sub>w</sub>
+                          </div>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '4px', textAlign: 'center', marginBottom: '10px' }}>
+                            <code style={{ fontSize: '1.1rem', color: '#1e293b' }}>
+                              σ<sub>w</sub> = R̄ / d<sub>2</sub>
+                            </code>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>(Xbar-R 圖模式，子組筆數 n &gt; 1)</div>
+                            <div style={{ height: '8px' }}></div>
+                            <code style={{ fontSize: '1.1rem', color: '#1e293b' }}>
+                              σ<sub>w</sub> = MR̄ / 1.128
+                            </code>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>(I-MR 圖模式，子組筆數 n = 1)</div>
+                          </div>
+                          <p style={{ fontSize: '0.8rem', color: '#475569', margin: 0, lineHeight: '1.5' }}>
+                            <strong>含義：</strong> 反映製程的「潛在能力」。d<sub>2</sub> 是統計常數。此指標排除了組間漂移，用於計算 <strong>Cpk</strong>，呈現消除外部干擾後的純淨模具能力。
+                          </p>
+                        </div>
+
+                        <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', borderLeft: '3px solid #0f172a', paddingLeft: '8px' }}>
+                            整體標準差 (Overall StDev) - σ<sub>o</sub>
+                          </div>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '4px', textAlign: 'center', marginBottom: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '66px' }}>
+                            <code style={{ fontSize: '1.1rem', color: '#1e293b' }}>
+                              σ<sub>o</sub> = √[ Σ(X - X̄)² / (N - 1) ]
+                            </code>
+                          </div>
+                          <p style={{ fontSize: '0.8rem', color: '#475569', margin: 0, lineHeight: '1.5' }}>
+                            <strong>含義：</strong> 反映製程的「實際表現」。對所有量測點直接進行樣本標準差運算。用於計算 <strong>Ppk</strong>，呈現包含環境、材料等所有變異後的最終交付品質。
+                          </p>
                         </div>
                       </div>
                     </div>
