@@ -71,7 +71,14 @@ def format_analysis_result(result):
     return result
 
 # Initialize analysis core with default data directory
-DEFAULT_DATA_DIR = os.path.abspath(os.path.join(os.getcwd(), "..", "..", "2.QIP數據提取"))
+# Try to find the directory, fallback if not exists to avoid 500 errors
+ORIGINAL_DATA_DIR = os.path.abspath(os.path.join(os.getcwd(), "..", "..", "2.QIP數據提取"))
+if os.path.isdir(ORIGINAL_DATA_DIR):
+    DEFAULT_DATA_DIR = ORIGINAL_DATA_DIR
+else:
+    # Fallback to current project root or dynamic selection
+    DEFAULT_DATA_DIR = os.getcwd()
+
 current_data_dir = DEFAULT_DATA_DIR
 analysis_core = QIPAnalysis(current_data_dir)
 

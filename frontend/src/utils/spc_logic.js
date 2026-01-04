@@ -205,16 +205,11 @@ export class SPCAnalysis {
         const cpk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * within_std), (mean - specs.lsl) / (3 * within_std)) : null;
         const ppk = (specs.usl !== null && specs.lsl !== null) ? Math.min((specs.usl - mean) / (3 * overall_std), (mean - specs.lsl) / (3 * overall_std)) : null;
 
-        // --- Detect Violations (Out of Control Points) ---
-        const xbar_violations = [];
+        // --- Nelson Rules Detection ---
+        const violations_detail = this.detectNelsonRules(values, mean, ucl_x, lcl_x, labels);
+        const xbar_violations = violations_detail.map(v => v.message);
         const r_violations = [];
         const current_r_values = isXbar ? rangeValues : mr;
-
-        values.forEach((v, i) => {
-            if (v > ucl_x || v < lcl_x) {
-                xbar_violations.push(`${labels[i]}: ${isXbar ? 'X-bar' : 'Value'} (${v.toFixed(dataMaxPrecision)}) out of control limits`);
-            }
-        });
 
         current_r_values.forEach((v, i) => {
             if (v > ucl_r || v < lcl_r) {
@@ -222,8 +217,48 @@ export class SPCAnalysis {
             }
         });
 
+        // --- Normal Distribution Plot Data ---
+        // 1. Histogram
+        const numBins = 15;
+        const minVal = Math.min(...values);
+        const maxVal = Math.max(...values);
+        const binWidth = (maxVal - minVal) / numBins;
+        const bin_centers = [];
+        const counts = Array(numBins).fill(0);
+
+        for (let i = 0; i < numBins; i++) {
+            bin_centers.push(minVal + (i + 0.5) * binWidth);
+        }
+
+        values.forEach(v => {
+            let binIdx = Math.floor((v - minVal) / binWidth);
+            if (binIdx === numBins) binIdx = numBins - 1;
+            if (binIdx >= 0 && binIdx < numBins) counts[binIdx]++;
+        });
+
+        // 2. Normal Curves (Within and Overall)
+        const curve_x = [];
+        const curve_within = [];
+        const curve_overall = [];
+        const combined_std = Math.max(within_std, overall_std);
+        const curveStart = mean - 4 * combined_std;
+        const curveEnd = mean + 4 * combined_std;
+        const step = (curveEnd - curveStart) / 100;
+
+        const normalPDF = (x, m, s) => {
+            if (s <= 0) return 0;
+            return (1 / (s * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - m) / s, 2));
+        };
+
+        for (let i = 0; i <= 100; i++) {
+            const x = curveStart + i * step;
+            curve_x.push(x);
+            curve_within.push(normalPDF(x, mean, within_std) * values.length * binWidth);
+            curve_overall.push(normalPDF(x, mean, overall_std) * values.length * binWidth);
+        }
+
         return {
-            stats: { mean, within_std, overall_std, std_within: within_std, std_overall: overall_std },
+            stats: { mean, within_std, overall_std, std_within: within_std, std_overall: overall_std, count: values.length },
             control_limits: {
                 ucl_x, lcl_x, cl_x: mean, ucl_r, lcl_r, cl_r,
                 ucl_xbar: ucl_x, lcl_xbar: lcl_x, cl_xbar: mean,
@@ -236,8 +271,102 @@ export class SPCAnalysis {
                 mr_values: isXbar ? [] : mr
             },
             specs: { target: specs.target, usl: specs.usl, lsl: specs.lsl, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision },
-            violations: { xbar_violations, r_violations }
+            violations: { xbar_violations, r_violations },
+            violations_detail,
+            distribution: {
+                histogram: { bin_centers, counts },
+                curve: { x: curve_x, within: curve_within, overall: curve_overall }
+            }
         };
+    }
+
+    detectNelsonRules(data, cl, ucl, lcl, labels) {
+        const violations = [];
+
+        // Rule 1: One point beyond 3 sigma
+        data.forEach((v, i) => {
+            if (v > ucl || v < lcl) {
+                violations.push({
+                    rule: "Rule 1",
+                    index: i,
+                    message: `Rule 1: Point ${labels[i]} is outside control limits (${v.toFixed(4)})`
+                });
+            }
+        });
+
+        // Rule 2: 9 consecutive points on same side
+        let side = 0;
+        let count = 0;
+        data.forEach((v, i) => {
+            const current_side = v > cl ? 1 : v < cl ? -1 : 0;
+            if (current_side !== 0) {
+                if (current_side === side) {
+                    count++;
+                } else {
+                    side = current_side;
+                    count = 1;
+                }
+                if (count >= 9) {
+                    violations.push({
+                        rule: "Rule 2",
+                        index: i,
+                        message: `Rule 2: 9 consecutive points on one side at point ${labels[i]}`
+                    });
+                }
+            } else {
+                count = 0;
+                side = 0;
+            }
+        });
+
+        // Rule 3: 6 points in a row increasing or decreasing
+        let trend = 0;
+        let tCount = 1;
+        for (let i = 1; i < data.length; i++) {
+            const current_trend = data[i] > data[i - 1] ? 1 : data[i] < data[i - 1] ? -1 : 0;
+            if (current_trend !== 0) {
+                if (current_trend === trend) {
+                    tCount++;
+                } else {
+                    trend = current_trend;
+                    tCount = 2;
+                }
+                if (tCount >= 6) {
+                    violations.push({
+                        rule: "Rule 3",
+                        index: i,
+                        message: `Rule 3: 6 consecutive points increasing or decreasing at point ${labels[i]}`
+                    });
+                }
+            } else {
+                tCount = 1;
+                trend = 0;
+            }
+        }
+
+        // Rule 4: 14 points alternating direction
+        if (data.length >= 14) {
+            for (let i = 13; i < data.length; i++) {
+                let alternating = true;
+                for (let j = i - 12; j <= i; j++) {
+                    const diff1 = data[j] - data[j - 1];
+                    const diff2 = data[j - 1] - data[j - 2];
+                    if (diff1 * diff2 >= 0) {
+                        alternating = false;
+                        break;
+                    }
+                }
+                if (alternating) {
+                    violations.push({
+                        rule: "Rule 4",
+                        index: i,
+                        message: `Rule 4: 14 points alternating direction at point ${labels[i]}`
+                    });
+                }
+            }
+        }
+
+        return violations;
     }
 
     async analyzeCavity(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {

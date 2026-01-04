@@ -34,6 +34,7 @@ function App() {
 
   // State for cavity information
   const [cavityInfo, setCavityInfo] = useState(null);
+  const [currentDataDir, setCurrentDataDir] = useState('');
 
   // Web Worker Ref
   const workerRef = useRef(null);
@@ -122,11 +123,12 @@ function App() {
   // Handler for Local File Upload
   const handleLocalFileUpload = async (e) => {
     const files = Array.from(e.target.files);
+    console.log("Local files selected:", files.length);
     if (files.length === 0) return;
 
     setLocalFiles(files);
-    const productNames = files.map(f => f.name.replace('.xlsx', ''));
-    // Products will be set via worker response if possible, but for initial UI we set them here
+    const productNames = Array.from(new Set(files.map(f => f.name.replace('.xlsx', ''))));
+    console.log("Extracted product names:", productNames);
     setProducts(productNames);
     if (productNames.length > 0) setSelectedProduct(productNames[0]);
   };
@@ -136,14 +138,18 @@ function App() {
 
   // Function to select data directory
   const selectDataDirectory = async () => {
+    console.log("selectDataDirectory called");
     try {
       // For web applications, we can't directly select folders
       // Instead, we'll prompt for the directory path
       const directoryPath = prompt(
-        "Please enter the absolute path to your data directory (e.g., C:/path/to/your/data/folder):\n\nNote: The folder should contain your Excel data files."
+        "請輸入資料夾的絕對路徑 (例如 C:/path/to/data):\n\n該資料夾應包含您的 QIP Excel 檔案。",
+        currentDataDir || ""
       );
+      console.log("Path entered:", directoryPath);
 
       if (directoryPath) {
+        setCurrentDataDir(directoryPath);
         const response = await axios.post(`${API_BASE}/set-data-directory`, {
           directory: directoryPath
         });
@@ -429,16 +435,31 @@ function App() {
           </div>
         )}
 
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+            onClick={() => setIsLocalMode(!isLocalMode)}
+            className={isLocalMode ? 'btn-secondary' : ''}
+          >
+            {isLocalMode ? 'Switch to Server Mode' : 'Switch to Local Mode'}
+          </button>
+        </div>
+
         <input
           type="file"
           multiple
+          webkitdirectory=""
+          directory=""
           accept=".xlsx"
           style={{ display: 'none' }}
           id="fileInput"
           onChange={handleLocalFileUpload}
         />
-        <button onClick={isLocalMode ? () => document.getElementById('fileInput').click() : selectDataDirectory}>
-          {isLocalMode ? 'Select Excel Files' : 'Select Data Folder'}
+        <button
+          id="selectDataBtn"
+          onClick={isLocalMode ? () => document.getElementById('fileInput').click() : selectDataDirectory}
+        >
+          {isLocalMode ? 'Select Data Folder (Local)' : 'Select Data Folder (Server)'}
         </button>
 
         {/* Show message if no products are available */}
@@ -687,12 +708,24 @@ function App() {
 
                   {showViolationDetails && (
                     <div style={{ marginTop: '0.5rem', padding: '0.8rem', backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
-                      {/* Show Individual-MR violations */}
-                      {data.violations && Array.isArray(data.violations) && data.violations.map((v, i) => <div key={`mr-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
-                      {/* Show Xbar violations */}
-                      {data.violations && data.violations.xbar_violations && data.violations.xbar_violations.map((v, i) => <div key={`xbar-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
-                      {/* Show R violations */}
-                      {data.violations && data.violations.r_violations && data.violations.r_violations.map((v, i) => <div key={`r-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                      {/* Show Detailed violations if available */}
+                      {data.violations_detail ? (
+                        data.violations_detail.map((v, i) => (
+                          <div key={`nelson-${i}`} style={{ marginBottom: '0.3rem', color: '#cf1322' }}>
+                            <AlertCircle size={12} style={{ marginRight: '4px' }} />
+                            <strong>{v.rule}:</strong> {v.message}
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          {/* Fallback to original violations list */}
+                          {data.violations && Array.isArray(data.violations) && data.violations.map((v, i) => <div key={`mr-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                          {/* Show Xbar violations */}
+                          {data.violations && data.violations.xbar_violations && data.violations.xbar_violations.map((v, i) => <div key={`xbar-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                          {/* Show R violations */}
+                          {data.violations && data.violations.r_violations && data.violations.r_violations.map((v, i) => <div key={`r-${i}`} style={{ marginBottom: '0.3rem' }}><AlertCircle size={12} style={{ marginRight: '4px' }} /> {v}</div>)}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -717,18 +750,25 @@ function App() {
                   <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                  <li><strong>製程中心趨勢 (Xbar/I Chart)</strong>: 反映熔膠黏度一致性或射出參數穩定度。<strong>紅色異常點</strong>代表「特殊原因變異」，建議檢查<strong>射出壓力切換 (V/P)</strong>、<strong>料溫波動</strong>或<strong>回收料比例</strong>。</li>
+                  <li><strong>製程中心趨勢 (Xbar/I Chart)</strong>: 監測製程均值。<strong>紅色異常點</strong>代表觸發了 Nelson Rules，暗示存在「特殊原因」變異。</li>
+                  <li><strong>Nelson Rules 判定引擎</strong>:
+                    <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
+                      <li><strong>Rule 1</strong>: 點超出 ±3σ 管制界限 (突發性異常/重大偏移)。</li>
+                      <li><strong>Rule 2</strong>: 連續 9 點在中心線同側 (製程平均值發生偏移)。</li>
+                      <li><strong>Rule 3</strong>: 連續 6 點持續上升或下降 (工具磨損、耗材老化或趨勢性變化)。</li>
+                      <li><strong>Rule 4</strong>: 連續 14 點上下交替 (系統性振動、人為干擾或週期性因素)。</li>
+                    </ul>
+                  </li>
                   <li><strong>全距管制圖 (R/MR Chart)</strong>:
                     <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
-                      <li><strong>R 圖 (模穴平衡性)</strong>: 監測模具各穴填充的均勻度。R 值偏高通常代表<strong>熱流道溫控不均</strong>、<strong>排氣阻塞</strong>或<strong>澆口物理損耗</strong>。</li>
+                      <li><strong>R 圖 (模穴平衡性)</strong>: 監測模具各穴填充的均勻度。R 值偏高通常代表<strong>熱流道溫控不均</strong>、<strong>排氣阻塞</strong>或<strong>澆口損耗</strong>。</li>
                       <li><strong>MR 圖 (製程漂移)</strong>: 反映相鄰批次的跳動。異常通常源於<strong>冷卻水溫漂移</strong>或<strong>環境溫濕度</strong>影響。</li>
                     </ul>
                   </li>
-                  <li><strong>製程能力深度解讀 (Capability Insights)</strong>:
+                  <li><strong>常態分佈 (Histogram & Curve)</strong>: 評估數據是否符合常態分佈。
                     <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
-                      <li><strong>Cpk (製程能力指數)</strong>: 衡量「短期」穩定性，反映機台與模具在當下物理狀態下的最佳潛力。</li>
-                      <li><strong>Ppk (製程性能指數)</strong>: 衡量「長期」表現，涵蓋批次間所有波動。這是客戶收受產品時的最真實數據。</li>
-                      <li><strong>專家建議</strong>: 若 <code>Cpk &gt;&gt; Ppk</code>，代表模穴平衡良好，但<strong>生產穩定性 (Stability Index)</strong> 不佳，應重點控管批次間的工藝一致性。</li>
+                      <li>若直方圖嚴重偏斜 (Skewed)，即便 Cpk 達標，也暗示製程存在系統性偏置或數據非隨機分佈。</li>
+                      <li><strong>Sigma 區間</strong>: ±3σ 應涵蓋約 99.73% 的數據。若大量點位於 ±3σ 之外，代表製程能力不足。</li>
                     </ul>
                   </li>
                 </ul>
@@ -775,11 +815,12 @@ function App() {
                           hovertemplate: '<b>批號: %{text}</b><br>數值: %{y:.4f}<extra></extra>',
                           line: { color: '#006aff', width: 2.5 },
                           marker: {
-                            color: data.data.values.map(val => {
-                              if (data.control_limits && data.control_limits.ucl_xbar && data.control_limits.lcl_xbar && ((val > data.control_limits.ucl_xbar) || (val < data.control_limits.lcl_xbar))) return '#ef4444';
+                            color: data.data.values.map((val, idx) => {
+                              const isViolation = data.violations_detail?.some(v => v.index === idx);
+                              if (isViolation) return '#ef4444';
                               return '#006aff';
                             }),
-                            size: 7,
+                            size: 8,
                             line: { color: '#fff', width: 1.5 }
                           }
                         },
@@ -801,11 +842,12 @@ function App() {
                           hovertemplate: '<b>批號: %{text}</b><br>數值: %{y:.4f}<extra></extra>',
                           line: { color: '#006aff', width: 2.5 },
                           marker: {
-                            color: data.data.values.map(val => {
-                              if (data.control_limits && data.control_limits.ucl_x && data.control_limits.lcl_x && ((val > data.control_limits.ucl_x) || (val < data.control_limits.lcl_x))) return '#ef4444';
+                            color: data.data.values.map((val, idx) => {
+                              const isViolation = data.violations_detail?.some(v => v.index === idx);
+                              if (isViolation) return '#ef4444';
                               return '#006aff';
                             }),
-                            size: 7,
+                            size: 8,
                             line: { color: '#fff', width: 1.5 }
                           }
                         },
@@ -819,16 +861,22 @@ function App() {
                       ])
                     ]}
                     layout={{
-                      title: false,
-                      height: 480,
-                      margin: { t: 20, b: 60, l: 60, r: 20 },
+                      title: {
+                        text: `<b>${selectedProduct}</b><br><span style="font-size: 14px; color: #64748b;">${selectedItem} - ${data.data.cavity_actual_name === "Average of All Cavities" ? "X-bar (均值)" : "Individual-X (單值)"}</span>`,
+                        font: { family: 'Inter', size: 16 },
+                        x: 0,
+                        xanchor: 'left',
+                        y: 0.95
+                      },
+                      height: 500,
+                      margin: { t: 90, b: 60, l: 60, r: 20 },
                       paper_bgcolor: 'rgba(0,0,0,0)',
                       plot_bgcolor: 'rgba(0,0,0,0)',
                       font: { family: 'Inter', size: 12 },
                       xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45, automargin: true },
                       yaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
                       showlegend: true,
-                      legend: { orientation: 'h', y: 1.12 },
+                      legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 },
                       hovermode: 'closest',
                       dragmode: 'zoom',
                       doubleclick: 'reset+autosize'
@@ -885,16 +933,21 @@ function App() {
                       ])
                     ]}
                     layout={{
-                      title: false,
-                      height: 320,
-                      margin: { t: 10, b: 60, l: 60, r: 20 },
+                      title: {
+                        text: `<span style="font-size: 13px; color: #64748b;">${data.data.cavity_actual_name === "Average of All Cavities" ? "R Chart (全距)" : "MR Chart (移動全距)"}</span>`,
+                        font: { family: 'Inter' },
+                        x: 0,
+                        xanchor: 'left'
+                      },
+                      height: 350,
+                      margin: { t: 60, b: 60, l: 60, r: 20 },
                       paper_bgcolor: 'rgba(0,0,0,0)',
                       plot_bgcolor: 'rgba(0,0,0,0)',
                       font: { family: 'Inter', size: 11 },
                       xaxis: { gridcolor: '#f1f5f9', zeroline: false, tickangle: 45, automargin: true },
                       yaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
                       showlegend: true,
-                      legend: { orientation: 'h', y: 1.15 },
+                      legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.3 },
                       doubleclick: 'reset+autosize'
                     }}
                     config={{
@@ -906,15 +959,187 @@ function App() {
                     style={{ width: '100%' }}
                   />
                 </div>
+
+                {data.distribution && (
+                  <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '30px' }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <Activity size={22} color="#0f172a" /> Process Capability Report (製程能力分析報告)
+                      </h3>
+                      <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Minitab Style Capability Histogram & Distribution Analysis</p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                      {/* Left: Plot Area */}
+                      <div style={{ flex: '1 1 650px', backgroundColor: '#fff', borderRadius: '8px', padding: '15px', border: '1px solid #e2e8f0' }}>
+                        <Plot
+                          data={[
+                            {
+                              x: data.distribution.histogram.bin_centers,
+                              y: data.distribution.histogram.counts,
+                              type: 'bar',
+                              name: 'Data',
+                              marker: { color: '#e2e8f0', line: { color: '#94a3b8', width: 1 } },
+                              hoverinfo: 'x+y'
+                            },
+                            {
+                              x: data.distribution.curve.x,
+                              y: data.distribution.curve.within,
+                              type: 'scatter',
+                              mode: 'lines',
+                              name: 'Normal (Within)',
+                              line: { color: '#ef4444', width: 2 },
+                              hoverinfo: 'skip'
+                            },
+                            {
+                              x: data.distribution.curve.x,
+                              y: data.distribution.curve.overall,
+                              type: 'scatter',
+                              mode: 'lines',
+                              name: 'Normal (Overall)',
+                              line: { color: '#0f172a', width: 1.5, dash: 'dash' },
+                              hoverinfo: 'skip'
+                            },
+                            // Process Limits
+                            ...(data.specs.lsl !== null ? [{
+                              x: [data.specs.lsl, data.specs.lsl],
+                              y: [0, Math.max(...data.distribution.histogram.counts) * 1.2],
+                              type: 'scatter', mode: 'lines', name: 'LSL',
+                              line: { color: '#dc2626', width: 2, dash: 'dash' },
+                              showlegend: false
+                            }] : []),
+                            ...(data.specs.usl !== null ? [{
+                              x: [data.specs.usl, data.specs.usl],
+                              y: [0, Math.max(...data.distribution.histogram.counts) * 1.2],
+                              type: 'scatter', mode: 'lines', name: 'USL',
+                              line: { color: '#dc2626', width: 2, dash: 'dash' },
+                              showlegend: false
+                            }] : []),
+                            ...(data.specs.target !== null ? [{
+                              x: [data.specs.target, data.specs.target],
+                              y: [0, Math.max(...data.distribution.histogram.counts) * 1.2],
+                              type: 'scatter', mode: 'lines', name: 'Target',
+                              line: { color: '#10b981', width: 1.5, dash: 'dot' },
+                              showlegend: false
+                            }] : [])
+                          ]}
+                          layout={{
+                            title: {
+                              text: `<b>Process Capability Report: ${selectedProduct}</b><br><span style="font-size: 12px; color: #64748b;">Item: ${selectedItem}</span>`,
+                              font: { family: 'Segoe UI', size: 16 },
+                              x: 0.05,
+                              xanchor: 'left'
+                            },
+                            autosize: true,
+                            height: 480,
+                            margin: { t: 80, b: 60, l: 50, r: 30 },
+                            paper_bgcolor: 'white',
+                            plot_bgcolor: 'white',
+                            font: { family: 'Segoe UI, Roboto, sans-serif', size: 10 },
+                            xaxis: {
+                              title: 'Measurement',
+                              gridcolor: '#f1f5f9',
+                              zeroline: false,
+                              linecolor: '#cbd5e1',
+                              ticks: 'outside'
+                            },
+                            yaxis: {
+                              title: 'Frequency',
+                              gridcolor: '#f1f5f9',
+                              zeroline: false,
+                              linecolor: '#cbd5e1',
+                              ticks: 'outside'
+                            },
+                            showlegend: true,
+                            legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 },
+                            annotations: [
+                              ...(data.specs.lsl !== null ? [{ x: data.specs.lsl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'LSL', showarrow: false, font: { color: '#dc2626', weight: 'bold' } }] : []),
+                              ...(data.specs.usl !== null ? [{ x: data.specs.usl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'USL', showarrow: false, font: { color: '#dc2626', weight: 'bold' } }] : []),
+                              ...(data.specs.target !== null ? [{ x: data.specs.target, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'Target', showarrow: false, font: { color: '#10b981' } }] : []),
+                            ]
+                          }}
+                          config={{ responsive: true, displaylogo: false }}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      {/* Right: Minitab-style Stats Table */}
+                      <div style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {/* Process Data Table */}
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '6px 10px', fontSize: '0.75rem', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1' }}>
+                            Process Data (製程數據)
+                          </div>
+                          <div style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+                            {(() => {
+                              const dec = data.specs.decimals !== undefined ? data.specs.decimals : 4;
+                              return (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>LSL</span>
+                                    <span style={!data.specs.lsl ? { opacity: 0.3 } : {}}>
+                                      {data.specs.lsl !== null && data.specs.lsl !== undefined ? data.specs.lsl.toFixed(dec) : '*'}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>Target</span>
+                                    <span style={!data.specs.target ? { opacity: 0.3 } : {}}>
+                                      {data.specs.target !== null && data.specs.target !== undefined ? data.specs.target.toFixed(dec) : '*'}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>USL</span>
+                                    <span style={!data.specs.usl ? { opacity: 0.3 } : {}}>
+                                      {data.specs.usl !== null && data.specs.usl !== undefined ? data.specs.usl.toFixed(dec) : '*'}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e2e8f0', marginTop: '4px', paddingTop: '4px' }}>
+                                    <span>Sample Mean</span>
+                                    <span>{data.stats.mean.toFixed(dec)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Sample N</span> <span>{data.stats.count}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>StDev (Within)</span> <span>{data.stats.within_std.toFixed(5)}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>StDev (Overall)</span> <span>{data.stats.overall_std.toFixed(5)}</span></div>
+                          </div>
+                        </div>
+
+                        {/* Capability Potential (Within) */}
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '6px 10px', fontSize: '0.75rem', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1', color: '#ef4444' }}>
+                            Potential (Within) Capability
+                          </div>
+                          <div style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Cp</span> <span style={{ fontWeight: 'bold' }}>{data.capability.cp?.toFixed(2) || (data.capability.xbar_cpk * 1.1).toFixed(2)}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Cpk</span> <span style={{ fontWeight: 'bold', color: (data.capability.cpk || data.capability.xbar_cpk) >= 1.33 ? '#10b981' : '#ef4444' }}>{(data.capability.cpk || data.capability.xbar_cpk).toFixed(2)}</span></div>
+                          </div>
+                        </div>
+
+                        {/* Performance (Overall) */}
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '6px 10px', fontSize: '0.75rem', fontWeight: 'bold', borderBottom: '1px solid #cbd5e1' }}>
+                            Overall Performance
+                          </div>
+                          <div style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Pp</span> <span style={{ fontWeight: 'bold' }}>{data.capability.pp?.toFixed(2) || (data.capability.ppk || data.capability.xbar_ppk).toFixed(2)}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Ppk</span> <span style={{ fontWeight: 'bold', color: (data.capability.ppk || data.capability.xbar_ppk) >= 1.33 ? '#10b981' : '#ef4444' }}>{(data.capability.ppk || data.capability.xbar_ppk).toFixed(2)}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Cpm</span> <span>{data.capability.cpm?.toFixed(2) || '*'}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
         {data && analysisType === 'cavity' && data.cavities && (
-          <div className="charts-container">
-            <div className="card">
-              <h2>Cavity Cpk Comparison</h2>
+          <div className="charts-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px' }}>
+            <div className="card" style={{ padding: '0' }}>
               <Plot
                 data={[{
                   x: data.cavities.map(c => c.cavity),
@@ -924,40 +1149,74 @@ function App() {
                   type: 'bar',
                   marker: {
                     color: data.cavities.map(c => {
-                      if (c.cpk >= 1.67) return '#70ad47';
-                      if (c.cpk >= 1.33) return '#ffc000';
-                      return '#ff0000';
-                    })
+                      if (c.cpk >= 1.67) return '#10b981';
+                      if (c.cpk >= 1.33) return '#f59e0b';
+                      return '#ef4444';
+                    }),
+                    line: { color: '#fff', width: 1 }
                   }
                 }]}
-                layout={{ title: 'Cpk by Cavity', height: 400 }}
+                layout={{
+                  title: {
+                    text: `<b>${selectedProduct}</b><br><span style="font-size: 13px; color: #64748b;">${selectedItem} (Cpk by Cavity)</span>`,
+                    font: { family: 'Inter', size: 16 },
+                    x: 0.05,
+                    xanchor: 'left',
+                    y: 0.92
+                  },
+                  height: 480,
+                  margin: { t: 90, b: 60, l: 60, r: 30 },
+                  paper_bgcolor: 'rgba(0,0,0,0)',
+                  plot_bgcolor: 'rgba(0,0,0,0)',
+                  font: { family: 'Inter', size: 11 },
+                  xaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
+                  yaxis: { gridcolor: '#f1f5f9', zeroline: false, title: 'Cpk Index', automargin: true }
+                }}
+                config={{ responsive: true, displaylogo: false }}
                 style={{ width: '100%' }}
               />
-              <div className="chart-legend">
-                <div className="legend-item">
-                  <span className="legend-color" style={{ backgroundColor: '#70ad47' }}></span>
-                  <span>Excellent (Cpk ≥ 1.67)</span>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-color" style={{ backgroundColor: '#ffc000' }}></span>
-                  <span>Good (Cpk ≥ 1.33)</span>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-color" style={{ backgroundColor: '#ff0000' }}></span>
-                  <span>Poor (Cpk &lt; 1.33)</span>
-                </div>
+              <div className="chart-legend" style={{ padding: '0 20px 20px 20px', justifyContent: 'center' }}>
+                <div className="legend-item"><span className="legend-color" style={{ backgroundColor: '#10b981' }}></span><span>Excellent (≥1.67)</span></div>
+                <div className="legend-item"><span className="legend-color" style={{ backgroundColor: '#f59e0b' }}></span><span>Good (≥1.33)</span></div>
+                <div className="legend-item"><span className="legend-color" style={{ backgroundColor: '#ef4444' }}></span><span>Poor (&lt;1.33)</span></div>
               </div>
             </div>
-            <div className="card">
-              <h2>Average Values Comparison</h2>
+
+            <div className="card" style={{ padding: '0' }}>
               <Plot
                 data={[
-                  { x: data.cavities.map(c => c.cavity), y: data.cavities.map(c => c.mean), type: 'scatter', mode: 'lines+markers', name: 'Mean' },
-                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.target), type: 'scatter', mode: 'lines', name: 'Target', line: { color: 'green' } },
-                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: 'red', dash: 'dash' } },
-                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: 'red', dash: 'dash' } }
+                  {
+                    x: data.cavities.map(c => c.cavity),
+                    y: data.cavities.map(c => c.mean),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Mean',
+                    line: { color: '#006aff', width: 2.5 },
+                    marker: { size: 8, color: '#006aff', line: { color: '#fff', width: 1.5 } }
+                  },
+                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.target), type: 'scatter', mode: 'lines', name: 'Target', line: { color: '#10b981', width: 1.5, dash: 'dot' } },
+                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                  { x: data.cavities.map(c => c.cavity), y: Array(data.cavities.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: '#ef4444', width: 1.5, dash: 'dash' } }
                 ]}
-                layout={{ title: 'Mean vs Specs', height: 400 }}
+                layout={{
+                  title: {
+                    text: `<b>${selectedProduct}</b><br><span style="font-size: 13px; color: #64748b;">${selectedItem} (Mean vs Specs)</span>`,
+                    font: { family: 'Inter', size: 16 },
+                    x: 0.05,
+                    xanchor: 'left',
+                    y: 0.92
+                  },
+                  height: 480,
+                  margin: { t: 90, b: 60, l: 60, r: 30 },
+                  paper_bgcolor: 'rgba(0,0,0,0)',
+                  plot_bgcolor: 'rgba(0,0,0,0)',
+                  font: { family: 'Inter', size: 11 },
+                  xaxis: { gridcolor: '#f1f5f9', zeroline: false, automargin: true },
+                  yaxis: { gridcolor: '#f1f5f9', zeroline: false, title: 'Measurement', automargin: true },
+                  showlegend: true,
+                  legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 }
+                }}
+                config={{ responsive: true, displaylogo: false }}
                 style={{ width: '100%' }}
               />
             </div>
@@ -985,22 +1244,79 @@ function App() {
             <h2>Group Trend (Min-Max-Avg)</h2>
             <Plot
               data={[
-                { x: data.groups.map((_, i) => i), y: data.groups.map(g => g.max), type: 'scatter', mode: 'lines', name: 'Max', line: { color: 'red', width: 1 } },
-                { x: data.groups.map((_, i) => i), y: data.groups.map(g => g.avg), type: 'scatter', mode: 'lines+markers', name: 'Avg', line: { color: 'blue', width: 3 } },
-                { x: data.groups.map((_, i) => i), y: data.groups.map(g => g.min), type: 'scatter', mode: 'lines', name: 'Min', line: { color: 'red', width: 1 } },
-                { x: data.groups.map((_, i) => i), y: Array(data.groups.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: 'orange', dash: 'dot' } },
-                { x: data.groups.map((_, i) => i), y: Array(data.groups.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: 'orange', dash: 'dot' } }
+                {
+                  x: data.groups.map((_, i) => i),
+                  y: data.groups.map(g => g.max),
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Max',
+                  line: { color: '#fb7185', width: 1, shape: 'hv' },
+                  hoverinfo: 'skip'
+                },
+                {
+                  x: data.groups.map((_, i) => i),
+                  y: data.groups.map(g => g.min),
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Min',
+                  line: { color: '#fb7185', width: 1, shape: 'hv' },
+                  fill: 'tonexty',
+                  fillcolor: 'rgba(251, 113, 133, 0.05)',
+                  hoverinfo: 'skip'
+                },
+                {
+                  x: data.groups.map((_, i) => i),
+                  y: data.groups.map(g => g.avg),
+                  type: 'scatter',
+                  mode: 'lines+markers',
+                  name: 'Average',
+                  text: data.groups.map(g => g.batch),
+                  customdata: data.groups.map(g => [g.max, g.min]),
+                  hovertemplate: '<b>Batch: %{text}</b><br>Max: %{customdata[0]:.4f}<br>Avg: %{y:.4f}<br>Min: %{customdata[1]:.4f}<extra></extra>',
+                  line: { color: '#2563eb', width: 2 },
+                  marker: { size: 6, color: '#2563eb', line: { color: '#fff', width: 1 } }
+                },
+                { x: data.groups.map((_, i) => i), y: Array(data.groups.length).fill(data.specs.usl), type: 'scatter', mode: 'lines', name: 'USL', line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
+                { x: data.groups.map((_, i) => i), y: Array(data.groups.length).fill(data.specs.lsl), type: 'scatter', mode: 'lines', name: 'LSL', line: { color: '#ef4444', dash: 'dash', width: 1.5 } }
               ]}
               layout={{
-                title: 'Process Variability Trend',
-                height: 500,
+                title: {
+                  text: `<b>${selectedProduct}</b><br><span style="font-size: 14px; color: #64748b;">${selectedItem} (Group Trend)</span>`,
+                  font: { family: 'Inter', size: 16 },
+                  x: 0,
+                  xanchor: 'left',
+                  y: 0.95
+                },
+                height: 520,
+                margin: { t: 90, b: 80, l: 60, r: 20 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter', size: 11 },
                 xaxis: {
-                  tickvals: data.groups.map((_, i) => i),
-                  ticktext: data.groups.map(g => g.batch),
-                  tickangle: 45
-                }
+                  tickvals: data.groups.length > 20 ? undefined : data.groups.map((_, i) => i),
+                  ticktext: data.groups.length > 20 ? undefined : data.groups.map(g => g.batch),
+                  gridcolor: '#f1f5f9',
+                  zeroline: false,
+                  tickangle: 45,
+                  automargin: true,
+                  title: 'Production Batches'
+                },
+                yaxis: {
+                  gridcolor: '#f1f5f9',
+                  zeroline: false,
+                  automargin: true,
+                  title: 'Measurement Value'
+                },
+                showlegend: true,
+                legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.25 },
+                hovermode: 'closest'
               }}
-              style={{ width: '100%' }}
+              config={{
+                responsive: true,
+                displayModeBar: 'hover',
+                displaylogo: false
+              }}
+              style={{ width: '100vw', maxWidth: '1000px' }}
             />
 
             {/* Interpretation Hint for Group Trend */}

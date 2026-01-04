@@ -1,0 +1,150 @@
+Sub CreateControlChartWithNelsonLegend()
+    Dim ws As Worksheet
+    Dim sheetIndex As Variant, colLetter As String
+    Dim lastRow As Long, dataRng As Range
+    Dim dataArr As Variant
+    Dim i As Long, j As Long
+    Dim avg As Double, stdDev As Double, ucl As Double, lcl As Double
+    Dim chartObj As ChartObject
+    Dim seriesData As Series, seriesViolation As Series
+    Dim violationCount As Integer: violationCount = 0
+    
+    ' --- 1. 交互式選取數據 ---
+    Dim sheetList As String: For i = 1 To Sheets.Count: sheetList = sheetList & i & ". " & Sheets(i).Name & vbCrLf: Next i
+    sheetIndex = InputBox(sheetList, "第一步：選取工作表編號")
+    If sheetIndex = "" Or Not IsNumeric(sheetIndex) Then Exit Sub
+    Set ws = Sheets(CInt(sheetIndex))
+    ws.Activate
+    
+    colLetter = InputBox("請輸入數據所在欄位字母（例如：E）:", "第二步：數據欄位", "E")
+    If colLetter = "" Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.Count, colLetter).End(xlUp).Row
+    If lastRow < 15 Then MsgBox "數據量較少，Nelson Rules 可能無法完全觸發。": Exit Sub
+    Set dataRng = ws.Range(ws.Cells(2, colLetter), ws.Cells(lastRow, colLetter))
+    dataArr = dataRng.Value
+    
+    ' --- 2. 計算統計量 ---
+    avg = Application.WorksheetFunction.Average(dataRng)
+    stdDev = Application.WorksheetFunction.StDev_P(dataRng)
+    ucl = avg + 3 * stdDev
+    lcl = avg - 3 * stdDev
+    
+    ' --- 3. 準備輔助數據 (AA 欄之後) ---
+    ws.Columns("AA:AF").Clear
+    ws.Range("AA1:AF1").Value = Array("索引", "值", "CL", "UCL", "LCL", "異常標記")
+    
+    For i = 1 To UBound(dataArr)
+        ws.Cells(i + 1, "AA").Value = i
+        ws.Cells(i + 1, "AB").Value = dataArr(i, 1)
+        ws.Cells(i + 1, "AC").Value = avg
+        ws.Cells(i + 1, "AD").Value = ucl
+        ws.Cells(i + 1, "AE").Value = lcl
+    Next i
+    
+    ' --- 4. Nelson Rules 判定 (R1-R4) ---
+    For i = 1 To UBound(dataArr)
+        Dim ruleTriggered As String: ruleTriggered = ""
+        ' R1: 超出界限
+        If dataArr(i, 1) > ucl Or dataArr(i, 1) < lcl Then ruleTriggered = "R1 "
+        ' R2: 連續 9 點在同側
+        If i >= 9 Then
+            Dim sideSum As Integer: sideSum = 0
+            For j = 0 To 8
+                If dataArr(i - j, 1) > avg Then sideSum = sideSum + 1 Else If dataArr(i - j, 1) < avg Then sideSum = sideSum - 1
+            Next j
+            If Abs(sideSum) = 9 Then ruleTriggered = ruleTriggered & "R2 "
+        End If
+        ' R3: 連續 6 點上升或下降
+        If i >= 6 Then
+            Dim trendUp As Boolean: trendUp = True: Dim trendDown As Boolean: trendDown = True
+            For j = 0 To 4
+                If dataArr(i - j, 1) <= dataArr(i - j - 1, 1) Then trendUp = False
+                If dataArr(i - j, 1) >= dataArr(i - j - 1, 1) Then trendDown = False
+            Next j
+            If trendUp Or trendDown Then ruleTriggered = ruleTriggered & "R3 "
+        End If
+        ' R4: 連續 14 點上下交替
+        If i >= 14 Then
+            Dim isAlt As Boolean: isAlt = True
+            For j = 0 To 12
+                If (dataArr(i - j, 1) - dataArr(i - j - 1, 1)) * (dataArr(i - j - 1, 1) - dataArr(i - j - 2, 1)) >= 0 Then isAlt = False: Exit For
+            Next j
+            If isAlt Then ruleTriggered = ruleTriggered & "R4 "
+        End If
+        
+        If ruleTriggered <> "" Then
+            ws.Cells(i + 1, "AF").Value = dataArr(i, 1)
+            ws.Cells(i + 1, "AF").AddComment ruleTriggered
+            violationCount = violationCount + 1
+        End If
+    Next i
+
+    ' --- 5. 繪製圖表 ---
+    On Error Resume Next: ws.ChartObjects("SPC_Nelson_Chart").Delete: On Error GoTo 0
+    ' 加寬圖表以容納說明文字
+    Set chartObj = ws.ChartObjects.Add(Left:=350, Width:=950, Top:=20, Height:=450)
+    chartObj.Name = "SPC_Nelson_Chart"
+    
+    With chartObj.Chart
+        .ChartType = xlLine
+        .HasTitle = True: .ChartTitle.Text = ws.Name & " 管制圖分析 (Nelson Rules)"
+        Do While .SeriesCollection.Count > 0: .SeriesCollection(1).Delete: Loop
+        
+        ' 原始數據
+        Set seriesData = .SeriesCollection.NewSeries
+        seriesData.XValues = ws.Range("AA2:AA" & lastRow): seriesData.Values = ws.Range("AB2:AB" & lastRow)
+        seriesData.Name = "個別數據": seriesData.Format.Line.ForeColor.RGB = RGB(80, 80, 80)
+        
+        ' 管制線 (CL, UCL, LCL)
+        Dim cols: cols = Array("AC", "AD", "AE"): Dim names: names = Array("中心線(CL)", "UCL", "LCL")
+        Dim clrs: clrs = Array(RGB(0, 150, 0), RGB(255, 0, 0), RGB(255, 0, 0))
+        For i = 0 To 2
+            With .SeriesCollection.NewSeries
+                .Name = names(i): .Values = ws.Range(cols(i) & "2:" & cols(i) & lastRow)
+                .MarkerStyle = xlMarkerStyleNone: .Format.Line.ForeColor.RGB = clrs(i)
+                If i > 0 Then .Format.Line.DashStyle = msoLineDash
+            End With
+        Next i
+        
+        ' 異常標記紅點
+        If violationCount > 0 Then
+            Set seriesViolation = .SeriesCollection.NewSeries
+            seriesViolation.Values = ws.Range("AF2:AF" & lastRow)
+            seriesViolation.MarkerStyle = xlMarkerStyleCircle: seriesViolation.MarkerSize = 8
+            seriesViolation.Format.Fill.ForeColor.RGB = RGB(255, 0, 0): seriesViolation.Format.Line.Visible = False
+            seriesViolation.ApplyDataLabels
+            For j = 1 To lastRow - 1
+                If ws.Cells(j + 1, "AF").Value <> "" Then
+                    seriesViolation.DataLabels(j).Text = ws.Cells(j + 1, "AF").Comment.Text
+                    seriesViolation.DataLabels(j).Font.Color = RGB(255, 0, 0): seriesViolation.DataLabels(j).Font.Bold = True
+                End If
+            Next j
+        End If
+        
+        ' --- 6. 加入規則解讀文字方塊 ---
+        Dim ruleDesc As String
+        ruleDesc = "【Nelson Rules 解讀說明】" & vbCrLf & _
+                   "● R1: 點超出 ±3σ 界限 (突發性異常)" & vbCrLf & _
+                   "● R2: 連續 9 點在中心線同側 (製程平均值偏移)" & vbCrLf & _
+                   "● R3: 連續 6 點持續上升或下降 (工具磨損/趨勢)" & vbCrLf & _
+                   "● R4: 連續 14 點上下交替 (系統性人為干擾)"
+        
+        Dim txtBox As Shape
+        Set txtBox = .Shapes.AddTextbox(msoTextOrientationHorizontal, 720, 50, 210, 100)
+        With txtBox.TextFrame2.TextRange
+            .Text = ruleDesc
+            .Font.Size = 9: .Font.Name = "微軟正黑體"
+            .Characters(1, 14).Font.Bold = True ' 標題加粗
+        End With
+        txtBox.Fill.ForeColor.RGB = RGB(245, 245, 245) ' 淺灰背景
+        txtBox.Line.ForeColor.RGB = RGB(200, 200, 200) ' 邊框
+        
+        ' 圖表淨化
+        .Axes(xlValue).HasMajorGridlines = False
+        .Legend.Position = xlLegendPositionBottom
+        .ChartArea.Border.LineStyle = -4142
+    End With
+    
+    MsgBox "分析完成！共發現 " & violationCount & " 處非隨機趨勢。", vbInformation
+End Sub

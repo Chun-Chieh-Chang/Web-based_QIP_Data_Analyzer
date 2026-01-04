@@ -1,0 +1,168 @@
+Sub CreateControlChartWithNelsonRules()
+    Dim ws As Worksheet
+    Dim sheetIndex As Variant, colLetter As String
+    Dim lastRow As Long, dataRng As Range
+    Dim dataArr As Variant
+    Dim i As Long, j As Long
+    Dim avg As Double, stdDev As Double
+    Dim ucl As Double, lcl As Double
+    Dim chartObj As ChartObject
+    Dim seriesData As Series, seriesViolation As Series
+    
+    ' --- 1. 交互式選取數據 ---
+    Dim sheetList As String: For i = 1 To Sheets.Count: sheetList = sheetList & i & ". " & Sheets(i).Name & vbCrLf: Next i
+    sheetIndex = InputBox(sheetList, "選取工作表編號")
+    If sheetIndex = "" Or Not IsNumeric(sheetIndex) Then Exit Sub
+    Set ws = Sheets(CInt(sheetIndex))
+    ws.Activate
+    
+    colLetter = InputBox("請輸入數據所在欄位（例如：E）:", "數據欄位", "E")
+    If colLetter = "" Then Exit Sub
+    
+    lastRow = ws.Cells(ws.Rows.Count, colLetter).End(xlUp).Row
+    If lastRow < 15 Then MsgBox "數據量建議大於 15 筆以進行 Nelson Rules 判定。": Exit Sub
+    Set dataRng = ws.Range(ws.Cells(2, colLetter), ws.Cells(lastRow, colLetter)) ' 假設第1行為標題
+    dataArr = dataRng.Value
+    
+    ' --- 2. 計算基礎統計量 ---
+    avg = Application.WorksheetFunction.Average(dataRng)
+    stdDev = Application.WorksheetFunction.StDev_P(dataRng)
+    ucl = avg + 3 * stdDev
+    lcl = avg - 3 * stdDev
+    
+    ' --- 3. 準備繪圖輔助數據 (清空 AA:AE 欄) ---
+    ws.Columns("AA:AF").Clear
+    ws.Range("AA1:AF1").Value = Array("索引", "原始值", "中心線", "UCL", "LCL", "異常點標記")
+    
+    ' 輸出基礎線條數據
+    For i = 1 To UBound(dataArr)
+        ws.Cells(i + 1, "AA").Value = i
+        ws.Cells(i + 1, "AB").Value = dataArr(i, 1)
+        ws.Cells(i + 1, "AC").Value = avg
+        ws.Cells(i + 1, "AD").Value = ucl
+        ws.Cells(i + 1, "AE").Value = lcl
+    Next i
+    
+    ' --- 4. Nelson Rules 判定引擎 ---
+    Dim violationCount As Integer: violationCount = 0
+    For i = 1 To UBound(dataArr)
+        Dim ruleTriggered As String: ruleTriggered = ""
+        
+        ' Rule 1: 點超出界限
+        If dataArr(i, 1) > ucl Or dataArr(i, 1) < lcl Then
+            ruleTriggered = "R1 "
+        End If
+        
+        ' Rule 2: 連續 9 點在同側 (從第 9 點開始判斷)
+        If i >= 9 Then
+            Dim sideCount As Integer: sideCount = 0
+            For j = 0 To 8
+                If dataArr(i - j, 1) > avg Then sideCount = sideCount + 1
+                If dataArr(i - j, 1) < avg Then sideCount = sideCount - 1
+            Next j
+            If Abs(sideCount) = 9 Then ruleTriggered = ruleTriggered & "R2 "
+        End If
+        
+        ' Rule 3: 連續 6 點持續上升或下降
+        If i >= 6 Then
+            Dim trendUp As Boolean: trendUp = True
+            Dim trendDown As Boolean: trendDown = True
+            For j = 0 To 4
+                If dataArr(i - j, 1) <= dataArr(i - j - 1, 1) Then trendUp = False
+                If dataArr(i - j, 1) >= dataArr(i - j - 1, 1) Then trendDown = False
+            Next j
+            If trendUp Or trendDown Then ruleTriggered = ruleTriggered & "R3 "
+        End If
+        
+        ' Rule 4: 連續 14 點上下交替
+        If i >= 14 Then
+            Dim isAlternating As Boolean: isAlternating = True
+            For j = 0 To 12
+                Dim diff1 As Double: diff1 = dataArr(i - j, 1) - dataArr(i - j - 1, 1)
+                Dim diff2 As Double: diff2 = dataArr(i - j - 1, 1) - dataArr(i - j - 2, 1)
+                If diff1 * diff2 >= 0 Then isAlternating = False: Exit For
+            Next j
+            If isAlternating Then ruleTriggered = ruleTriggered & "R4 "
+        End If
+        
+        ' 如果有觸發規則，記錄到 AF 欄
+        If ruleTriggered <> "" Then
+            ws.Cells(i + 1, "AF").Value = dataArr(i, 1) ' 存數值用於繪圖點
+            ws.Cells(i + 1, "AF").AddComment ruleTriggered ' 存規則名稱到批註
+            violationCount = violationCount + 1
+        End If
+    Next i
+
+    ' --- 5. 繪製管制圖 ---
+    On Error Resume Next: ws.ChartObjects("SPC_Chart").Delete: On Error GoTo 0
+    Set chartObj = ws.ChartObjects.Add(Left:=350, Width:=900, Top:=10, Height:=400)
+    chartObj.Name = "SPC_Chart"
+    
+    With chartObj.Chart
+        .ChartType = xlLine
+        .HasTitle = True
+        .ChartTitle.Text = ws.Name & " - Nelson Rules 管制圖 (欄位 " & colLetter & ")"
+        
+        ' 移除預設系列
+        Do While .SeriesCollection.Count > 0: .SeriesCollection(1).Delete: Loop
+        
+        ' A. 原始數據線
+        Set seriesData = .SeriesCollection.NewSeries
+        With seriesData
+            .Name = "個別值(X)"
+            .XValues = ws.Range("AA2:AA" & lastRow)
+            .Values = ws.Range("AB2:AB" & lastRow)
+            .Format.Line.ForeColor.RGB = RGB(100, 100, 100)
+            .MarkerStyle = xlMarkerStyleCircle
+            .MarkerSize = 4
+        End With
+        
+        ' B. 中心線, UCL, LCL (不顯示標記)
+        Dim lines As Variant: lines = Array("AC", "AD", "AE")
+        Dim names As Variant: names = Array("中心線", "UCL", "LCL")
+        Dim colors As Variant: colors = Array(RGB(0, 150, 0), RGB(255, 0, 0), RGB(255, 0, 0))
+        
+        For i = 0 To 2
+            With .SeriesCollection.NewSeries
+                .Name = names(i)
+                .Values = ws.Range(lines(i) & "2:" & lines(i) & lastRow)
+                .MarkerStyle = xlMarkerStyleNone
+                .Format.Line.ForeColor.RGB = colors(i)
+                If i > 0 Then .Format.Line.DashStyle = msoLineDash ' UCL/LCL 用虛線
+            End With
+        Next i
+        
+        ' C. 異常點標記 (紅色大點)
+        If violationCount > 0 Then
+            Set seriesViolation = .SeriesCollection.NewSeries
+            With seriesViolation
+                .Name = "異常訊號"
+                .Values = ws.Range("AF2:AF" & lastRow)
+                .ChartType = xlXYScatter ' 使用散佈圖點疊加在折線上
+                .MarkerStyle = xlMarkerStyleCircle
+                .MarkerSize = 8
+                .Format.Fill.ForeColor.RGB = RGB(255, 0, 0)
+                ' 加上資料標籤顯示規則編號
+                .ApplyDataLabels
+                Dim p As Long
+                For p = 1 To lastRow - 1
+                    If ws.Cells(p + 1, "AF").Value <> "" Then
+                        On Error Resume Next
+                        .DataLabels(p).Text = ws.Cells(p + 1, "AF").Comment.Text
+                        .DataLabels(p).Position = xlLabelPositionAbove
+                        .DataLabels(p).Font.Color = RGB(255, 0, 0)
+                        .DataLabels(p).Font.Bold = True
+                        On Error GoTo 0
+                    End If
+                Next p
+            End With
+        End If
+        
+        .Legend.Position = xlLegendPositionBottom
+        ' 移除網格線
+        .Axes(xlValue).HasMajorGridlines = False
+        .ChartArea.Border.LineStyle = -4142
+    End With
+    
+    MsgBox "管制圖已生成！共偵測到 " & violationCount & " 個異常點。", vbInformation
+End Sub

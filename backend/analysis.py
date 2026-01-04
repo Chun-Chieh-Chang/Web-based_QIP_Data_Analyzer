@@ -192,8 +192,23 @@ class QIPAnalysis:
             except:
                 dpmo = 0.0
 
-            # Western Electric Rules
-            violations = self.detect_violations(values, mean, ucl_x, lcl_x, within_std)
+            # Nelson Rules detection (Rules 1-4)
+            violations_detail = self.detect_violations(values, mean, ucl_x, lcl_x, within_std)
+            violations = [v['message'] for v in violations_detail]
+
+            # Normal Distribution Plot Data
+            # 1. Histogram data
+            num_bins = 15
+            counts, bin_edges = np.histogram(values, bins=num_bins)
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+            
+            # 2. Normal Distribution Curve data
+            # Define range for curve (±4 sigma overall)
+            curve_x = np.linspace(mean - 4 * overall_std, mean + 4 * overall_std, 100)
+            # Use probability density function (PDF)
+            # To scale PDF to histogram, we need: PDF * (Total Points * Bin Width)
+            bin_width = bin_edges[1] - bin_edges[0]
+            curve_y = norm.pdf(curve_x, mean, overall_std) * (len(values) * bin_width)
 
             # Ensure everything is JSON serializable (no NaN)
             def clean_float(f):
@@ -227,48 +242,101 @@ class QIPAnalysis:
                     "sigma_level": clean_float(sigma_level),
                     "dpmo": clean_float(dpmo)
                 },
-                "violations": violations
+                "violations": violations,
+                "violations_detail": violations_detail,
+                "distribution": {
+                    "histogram": {
+                        "bin_centers": [clean_float(x) for x in bin_centers],
+                        "counts": counts.tolist()
+                    },
+                    "curve": {
+                        "x": [clean_float(x) for x in curve_x],
+                        "y": [clean_float(y) for y in curve_y]
+                    }
+                }
             }
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             return {"error": f"SPC calculation failed: {str(e)}"}
 
-    def detect_violations(self, data, cl, ucl, lcl, sigma) -> List[str]:
+    def detect_violations(self, data, cl, ucl, lcl, sigma) -> List[Dict[str, Any]]:
+        """Detect SPC violations using Nelson Rules 1-4"""
         if sigma <= 0: return []
         violations = []
-        # Rule 1: Point outside control limits
+        
+        # Rule 1: One point beyond 3 sigma from center line
         for i, v in enumerate(data):
             if v > ucl or v < lcl:
-                violations.append(f"Rule 1: Point {i+1} is outside control limits ({v:.4f})")
+                violations.append({
+                    "rule": "Rule 1",
+                    "index": i,
+                    "message": f"Rule 1: Point {i+1} is outside control limits ({v:.4f})"
+                })
         
-        # Rule 2: 9 consecutive points on one side of center line
+        # Rule 2: 9 (or more) consecutive points on the same side of the center line
         side = 0 
         count = 0
-        for v in data:
-            current_side = 1 if v > cl else -1
-            if current_side == side:
-                count += 1
+        for i, v in enumerate(data):
+            current_side = 1 if v > cl else -1 if v < cl else 0
+            if current_side != 0:
+                if current_side == side:
+                    count += 1
+                else:
+                    side = current_side
+                    count = 1
+                if count >= 9:
+                    violations.append({
+                        "rule": "Rule 2",
+                        "index": i,
+                        "message": f"Rule 2: 9 consecutive points on one side at point {i+1}"
+                    })
             else:
-                side = current_side
-                count = 1
-            if count >= 9:
-                violations.append("Rule 2: 9 consecutive points on one side (Process shift)")
-                break
+                count = 0
+                side = 0
 
-        # Rule 3: 6 consecutive points increasing or decreasing
+        # Rule 3: 6 (or more) points in a row are continually increasing (or decreasing)
         trend = 0 
         count = 1
         for i in range(1, len(data)):
             current_trend = 1 if data[i] > data[i-1] else -1 if data[i] < data[i-1] else 0
-            if current_trend != 0 and current_trend == trend:
-                count += 1
+            if current_trend != 0:
+                if current_trend == trend:
+                    count += 1
+                else:
+                    trend = current_trend
+                    count = 2
+                if count >= 6:
+                    violations.append({
+                        "rule": "Rule 3",
+                        "index": i,
+                        "message": f"Rule 3: 6 consecutive points increasing or decreasing at point {i+1}"
+                    })
             else:
-                trend = current_trend
-                count = 2 if current_trend != 0 else 1
-            if count >= 6:
-                violations.append("Rule 3: 6 consecutive points increasing or decreasing (Trend)")
-                break
+                count = 1
+                trend = 0
+
+        # Rule 4: 14 (or more) points in a row alternate in direction, increasing then decreasing
+        # This means diff1 * diff2 < 0 for 13 consecutive diffs
+        if len(data) >= 14:
+            for i in range(13, len(data)):
+                is_alternating = True
+                for j in range(i - 12, i + 1):
+                    # Check if (data[j] - data[j-1]) and (data[j-1] - data[j-2]) have different signs
+                    diff1 = data[j] - data[j-1]
+                    diff2 = data[j-1] - data[j-2]
+                    if diff1 * diff2 >= 0:
+                        is_alternating = False
+                        break
+                if is_alternating:
+                    violations.append({
+                        "rule": "Rule 4",
+                        "index": i,
+                        "message": f"Rule 4: 14 points alternating direction at point {i+1}"
+                    })
 
         return violations
+
     
     def export_to_excel(self, product_code: str, item_name: str, analysis_result: Dict[str, Any], output_path: str, start_batch: str = None, end_batch: str = None, analysis_type: str = 'batch', cavity: str = None):
         import xlsxwriter
