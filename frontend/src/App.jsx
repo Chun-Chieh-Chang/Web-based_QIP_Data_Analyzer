@@ -904,11 +904,16 @@ function App() {
                           hovertemplate: '<b>批號: %{text}</b><br>全距: %{y:.4f}<extra></extra>',
                           line: { color: '#64748b', width: 2 },
                           marker: {
-                            color: data.data.r_values.map(val => {
-                              if (data.control_limits && data.control_limits.ucl_r && (val > data.control_limits.ucl_r)) return '#ef4444';
+                            color: data.data.r_values.map((val, idx) => {
+                              // Rule 1 check: value > UCL or value < LCL
+                              if (data.control_limits && (
+                                (data.control_limits.ucl_r !== undefined && val > data.control_limits.ucl_r) ||
+                                (data.control_limits.lcl_r !== undefined && val < data.control_limits.lcl_r)
+                              )) return '#ef4444';
                               return '#64748b';
                             }),
-                            size: 6
+                            size: 8,
+                            line: { color: '#fff', width: 1.5 }
                           }
                         },
                         { x: data.data.r_labels.map((_, i) => i), y: Array(data.data.r_values.length).fill(data.control_limits.ucl_r), type: 'scatter', mode: 'lines', name: 'UCL (R)', line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
@@ -924,8 +929,15 @@ function App() {
                           hovertemplate: '<b>批號: %{text}</b><br>移動全距: %{y:.4f}<extra></extra>',
                           line: { color: '#64748b', width: 2 },
                           marker: {
-                            color: data.data.mr_values.map(val => (data.control_limits && data.control_limits.ucl_mr && val > data.control_limits.ucl_mr) ? '#ef4444' : '#64748b'),
-                            size: 6
+                            color: data.data.mr_values.map((val, idx) => {
+                              if (data.control_limits && (
+                                (data.control_limits.ucl_mr !== undefined && val > data.control_limits.ucl_mr) ||
+                                (data.control_limits.lcl_mr !== undefined && val < data.control_limits.lcl_mr)
+                              )) return '#ef4444';
+                              return '#64748b';
+                            }),
+                            size: 8,
+                            line: { color: '#fff', width: 1.5 }
                           }
                         },
                         { x: data.data.labels.slice(1).map((_, i) => i), y: Array(data.data.mr_values.length).fill(data.control_limits.ucl_mr), type: 'scatter', mode: 'lines', name: 'UCL (MR)', line: { color: '#ef4444', dash: 'dash', width: 1.5 } },
