@@ -1111,9 +1111,9 @@ function App() {
                             showlegend: true,
                             legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 },
                             annotations: [
-                              ...(data.specs.lsl !== null ? [{ x: data.specs.lsl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'LSL', showarrow: false, font: { color: '#dc2626', weight: 'bold' } }] : []),
-                              ...(data.specs.usl !== null ? [{ x: data.specs.usl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'USL', showarrow: false, font: { color: '#dc2626', weight: 'bold' } }] : []),
-                              ...(data.specs.target !== null ? [{ x: data.specs.target, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'Target', showarrow: false, font: { color: '#10b981' } }] : []),
+                              ...(data.specs.lsl !== null ? [{ x: data.specs.lsl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'LSL', showarrow: false, font: { color: '#dc2626', weight: 'bold' }, bgcolor: 'white' }] : []),
+                              ...(data.specs.usl !== null ? [{ x: data.specs.usl, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'USL', showarrow: false, font: { color: '#dc2626', weight: 'bold' }, bgcolor: 'white' }] : []),
+                              ...(data.specs.target !== null ? [{ x: data.specs.target, y: Math.max(...data.distribution.histogram.counts) * 1.15, text: 'Target', showarrow: false, font: { color: '#10b981' }, bgcolor: 'white' }] : []),
                             ]
                           }}
                           config={{ responsive: true, displaylogo: false }}
