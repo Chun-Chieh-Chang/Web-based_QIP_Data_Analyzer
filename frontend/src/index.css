@@ -2,7 +2,7 @@
 
 :root {
   /* Premium Industrial Color Palette */
-  --primary-color: #006aff;
+  --primary-color: #0f172a;
   --secondary-color: #64748b;
   --bg-color: #f8fafc;
   --sidebar-bg: #ffffff;
@@ -92,7 +92,7 @@ select:focus,
 input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 106, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
 }
 
 button {
@@ -109,6 +109,18 @@ button {
   justify-content: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+button.secondary {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+button.secondary:hover {
+  background-color: #f8fafc;
+  border-color: var(--secondary-color);
+  color: var(--text-main);
 }
 
 button:not(.secondary) {
