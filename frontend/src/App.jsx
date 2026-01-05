@@ -589,15 +589,7 @@ function App() {
                   <Activity size={18} /> 分析結果解讀 (Interpretation Guide)
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                  <li><strong>製程中心趨勢 (Xbar/I Chart)</strong>: 監測製程均值。<strong>紅色異常點</strong>代表觸發了 Nelson Rules，暗示存在「特殊原因」變異。</li>
-                  <li><strong>Nelson Rules 判定引擎</strong>:
-                    <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
-                      <li><strong>Rule 1</strong>: 點超出 ±3σ 管制界限 (突發性異常/重大偏移)。</li>
-                      <li><strong>Rule 2</strong>: 連續 9 點在中心線同側 (製程平均值發生偏移)。</li>
-                      <li><strong>Rule 3</strong>: 連續 6 點持續上升或下降 (工具磨損、耗材老化或趨勢性變化)。</li>
-                      <li><strong>Rule 4</strong>: 連續 14 點上下交替 (系統性振動、人為干擾或週期性因素)。</li>
-                    </ul>
-                  </li>
+                  <li><strong>製程中心趨勢 (Xbar/I Chart)</strong>: 監測製程均值。<strong>紅色異常點</strong>代表觸發了 Nelson Rules，暗示存在「特殊原因」變異。詳細判讀規則請參考下方 ISO 7870-2 統計受控判讀指南。</li>
                   <li><strong>全距管制圖 (R/MR Chart)</strong>:
                     <ul style={{ marginTop: '0.3rem', paddingLeft: '1.2rem' }}>
                       <li><strong>R 圖 (模穴平衡性)</strong>: 監測模具各穴填充的均勻度。R 值偏高通常代表<strong>熱流道溫控不均</strong>、<strong>排氣阻塞</strong>或<strong>澆口損耗</strong>。</li>
