@@ -857,6 +857,192 @@ function App() {
                   </div>
                 </div>
 
+                {/* Control Limits Formulas Reference */}
+                <div className="card" style={{
+                  backgroundColor: '#fefce8',
+                  borderLeft: '4px solid #eab308',
+                  borderRadius: '4px',
+                  padding: '1.5rem',
+                  marginTop: '10px',
+                  marginBottom: '30px'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#854d0e' }}>
+                    <Calculator size={20} /> 管制界限計算公式 (Control Limits Formulas)
+                  </div>
+
+                  {/* Formula Section */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '1.5rem' }}>
+                    {/* I-MR Chart Formulas */}
+                    <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '8px', border: '1px solid #fbbf24' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#92400e', marginBottom: '0.8rem', borderBottom: '2px solid #fbbf24', paddingBottom: '0.3rem' }}>
+                        📊 Individual-MR Chart (n=1)
+                      </div>
+                      <div style={{ fontSize: '0.8rem', lineHeight: '1.8', color: '#334155' }}>
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <strong>X Chart (個別值圖):</strong>
+                        </div>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          UCL<sub>X</sub> = X̿ + 2.66 × MR̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          CL<sub>X</sub> = X̿
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.6rem' }}>
+                          LCL<sub>X</sub> = X̿ - 2.66 × MR̄
+                        </code>
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <strong>MR Chart (移動全距圖):</strong>
+                        </div>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          UCL<sub>MR</sub> = 3.267 × MR̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          CL<sub>MR</sub> = MR̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px' }}>
+                          LCL<sub>MR</sub> = 0
+                        </code>
+                      </div>
+                    </div>
+
+                    {/* Xbar-R Chart Formulas */}
+                    <div style={{ backgroundColor: '#fff', padding: '1rem', borderRadius: '8px', border: '1px solid #fbbf24' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#92400e', marginBottom: '0.8rem', borderBottom: '2px solid #fbbf24', paddingBottom: '0.3rem' }}>
+                        📈 Xbar-R Chart (n&gt;1)
+                      </div>
+                      <div style={{ fontSize: '0.8rem', lineHeight: '1.8', color: '#334155' }}>
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <strong>X̄ Chart (平均值圖):</strong>
+                        </div>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          UCL<sub>X̄</sub> = X̿ + A<sub>2</sub> × R̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          CL<sub>X̄</sub> = X̿ (總平均)
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.6rem' }}>
+                          LCL<sub>X̄</sub> = X̿ - A<sub>2</sub> × R̄
+                        </code>
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <strong>R Chart (全距圖):</strong>
+                        </div>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          UCL<sub>R</sub> = D<sub>4</sub> × R̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                          CL<sub>R</sub> = R̄
+                        </code>
+                        <code style={{ display: 'block', backgroundColor: '#fef3c7', padding: '0.4rem', borderRadius: '4px' }}>
+                          LCL<sub>R</sub> = D<sub>3</sub> × R̄
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Constants Table */}
+                  <div style={{ backgroundColor: '#fff', padding: '1.2rem', borderRadius: '8px', border: '1px solid #d97706' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#78350f', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      📋 管制圖係數表 (Control Chart Constants)
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#fef3c7', borderBottom: '2px solid #fbbf24' }}>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #fde68a' }}>子組大小 (n)</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #fde68a' }}>A<sub>2</sub></th>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #fde68a' }}>D<sub>3</sub></th>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #fde68a' }}>D<sub>4</sub></th>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #fde68a' }}>d<sub>2</sub></th>
+                          </tr>
+                        </thead>
+                        <tbody style={{ fontSize: '0.72rem' }}>
+                          <tr style={{ backgroundColor: '#fffbeb' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>2</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.880</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>3.267</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.128</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>3</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.023</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.574</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.693</td>
+                          </tr>
+                          <tr style={{ backgroundColor: '#fffbeb' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>4</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.729</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.282</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.059</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>5</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.577</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.114</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.326</td>
+                          </tr>
+                          <tr style={{ backgroundColor: '#fffbeb' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>6</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.483</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.004</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.534</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>7</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.419</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.076</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.924</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.704</td>
+                          </tr>
+                          <tr style={{ backgroundColor: '#fffbeb' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>8</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.373</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.136</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.864</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.847</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>9</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.337</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.184</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.816</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>2.970</td>
+                          </tr>
+                          <tr style={{ backgroundColor: '#fffbeb' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a', fontWeight: 'bold' }}>10</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.308</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>0.223</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>1.777</td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', border: '1px solid #fde68a' }}>3.078</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Parameter Explanations */}
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fefce8', borderRadius: '6px', border: '1px dashed #eab308' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#713f12', marginBottom: '0.6rem' }}>
+                      📖 符號說明 (Symbol Definitions):
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.75rem', color: '#422006', lineHeight: '1.6' }}>
+                      <div><strong>X̿</strong>: 總平均 (Grand Average)</div>
+                      <div><strong>X̄</strong>: 子組平均 (Subgroup Average)</div>
+                      <div><strong>R̄</strong>: 平均全距 (Average Range)</div>
+                      <div><strong>MR̄</strong>: 平均移動全距 (Avg. Moving Range)</div>
+                      <div><strong>A<sub>2</sub></strong>: X̄ 圖係數 (Xbar Chart Factor)</div>
+                      <div><strong>D<sub>3</sub></strong>: R 圖下限係數 (R Chart LCL Factor)</div>
+                      <div><strong>D<sub>4</sub></strong>: R 圖上限係數 (R Chart UCL Factor)</div>
+                      <div><strong>d<sub>2</sub></strong>: 標準差轉換係數 (Sigma Conversion)</div>
+                      <div><strong>n</strong>: 子組大小 (Subgroup Size)</div>
+                    </div>
+                  </div>
+                </div>
+
                 {data.distribution && (
                   <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '30px' }}>
                     <div style={{ marginBottom: '20px' }}>
