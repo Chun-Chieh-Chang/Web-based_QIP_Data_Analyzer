@@ -1,26 +1,30 @@
 {
-  "name": "web-based-spc-analysis-tool",
-  "version": "1.0.0",
-  "description": "A standalone web-based Statistical Process Control (SPC) analysis tool for manufacturing process analysis",
-  "main": "index.js",
+  "name": "web-based-spc-analyzer",
+  "version": "5.0.0",
+  "description": "A standalone web-based Statistical Process Control (SPC) analysis tool for manufacturing quality analysis - Local Mode Only",
+  "type": "module",
   "scripts": {
-    "install": "echo Please run InstallDependencies.bat to install all dependencies",
-    "start": "echo Please run StartApplication.bat to start the application",
-    "dev": "echo Please run StartApplication.bat to start the application"
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "install-deps": "cd frontend && npm install"
   },
   "keywords": [
     "spc",
     "statistical-process-control",
     "manufacturing",
     "quality-control",
-    "analysis",
+    "process-capability",
     "xbar-r-chart",
-    "control-chart"
+    "control-chart",
+    "cpk",
+    "ppk",
+    "nelson-rules"
   ],
   "author": "QIP Development Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "not specified"
+    "url": "https://github.com/Chun-Chieh-Chang/Web-based_SPC_Analyzer.git"
   }
 }

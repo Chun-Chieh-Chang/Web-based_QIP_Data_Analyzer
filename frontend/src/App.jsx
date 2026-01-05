@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
-import { SPCAnalysis } from './utils/spc_logic';
+
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator } from 'lucide-react';
 // SPCAnalysis now runs in worker.js
 import SPCWorker from './utils/spc.worker.js?worker';
@@ -26,13 +26,11 @@ function App() {
   const [excludedBatches, setExcludedBatches] = useState([]); // Array of indices to skip
   const [showViolationDetails, setShowViolationDetails] = useState(false); // Collapsible violation details
 
-  // Local Mode State
-  const [isLocalMode, setIsLocalMode] = useState(true);
+  // File Upload State
   const [localFiles, setLocalFiles] = useState([]); // Array of File objects
 
-  // State for cavity information
+  // Cavity Information
   const [cavityInfo, setCavityInfo] = useState(null);
-  const [currentDataDir, setCurrentDataDir] = useState('');
 
   // Web Worker Ref
   const workerRef = useRef(null);
