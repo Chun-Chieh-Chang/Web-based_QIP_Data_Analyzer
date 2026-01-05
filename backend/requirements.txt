@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-pandas
-openpyxl
-numpy
-scipy
-xlsxwriter
-matplotlib

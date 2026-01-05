@@ -1,10 +1,10 @@
-# SPC Analysis Tool - User Manual (v4.5)
+# SPC Analysis Tool - User Manual (v5.0)
 
 ## 1. Overview
 The SPC Analysis Tool is a modern web application designed for manufacturing process control. It integrates complex statistical calculations with a user-friendly interface, allowing for real-time process monitoring directly in the browser.
 
 ### Key Logic & Features
-- **Intelligent Mode Switching**: Detects whether to use server-side Python or client-side JavaScript based on availability.
+- **Standalone Local Engine**: All logic runs locally in the browser via Web Workers for maximum speed and data privacy.
 - **Extreme Memory Efficiency**: Optimized data reading logic allows processing large Excel files without freezing the browser.
 - **Dynamic Statistics**: Automatically matches the precision of results to the input data's formatting.
 
@@ -16,8 +16,7 @@ The SPC Analysis Tool is a modern web application designed for manufacturing pro
 
 ### Initial Configuration
 - **Step 1**: Click **Select Data Folder**.
-- **Step 2**: Provide the path to your Excel records. 
-  *(Note: In browser local mode, you will select or upload files individually; in server mode, you specify a directory path).*
+- **Step 2**: Select the directory or individual Excel files you wish to analyze.
 
 ## 3. Analysis Interface Guide
 
@@ -66,4 +65,4 @@ To ensure the tool analyzes your data correctly, please follow these rules:
 | **Precision Mismatch** | Excel formatting | The tool reads formatted text. For 2 decimal places, format the Excel cells to show 2 decimals. |
 
 ---
-*Last Updated: 2026-01-03*
+*Last Updated: 2026-01-05*

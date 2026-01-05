@@ -1,15 +1,10 @@
 @echo off
-echo Installing dependencies for Web-based SPC Analysis Tool...
+echo Installing dependencies for Web-based SPC Analysis Tool (Local Mode)...
 echo.
 
 REM Get the current directory
 set "BASE_DIR=%~dp0"
 
-echo Installing Python dependencies...
-cd /d "%BASE_DIR%backend"
-pip install -r requirements.txt
-
-echo.
 echo Installing Node.js dependencies...
 cd /d "%BASE_DIR%frontend"
 npm install

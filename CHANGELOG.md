@@ -1,5 +1,16 @@
 # Project Change Log
 
+## [v5.0] - 2026-01-05
+### Removed
+- **Server Mode Functionality**: Completely removed the Python backend (FastAPI) and server-side analysis logic.
+- **Backend Dependencies**: Removed all Python-related scripts and environment requirements.
+- **Dual-Mode Switching**: Simplified the UI by removing the local/server mode toggle.
+
+### Changed
+- **Unified Local Architecture**: The application now operates exclusively in Standalone Local Mode, performing all calculations in the browser.
+- **Refined UI**: Cleaned up the sidebar and start scripts for a smoother, single-mode experience.
+- **Updated Documentation**: Simplified User Manual and README to reflect the streamlined architecture.
+
 ## [v4.5] - 2026-01-03
 ### Added
 - **Web Worker Engine**: Introduced background execution for all SPC calculations. This ensures the main UI remains responsive while processing large datasets.

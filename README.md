@@ -1,22 +1,17 @@
-# Web-based SPC Analysis Tool (v4.6)
+# Web-based SPC Analysis Tool (v5.0)
 
 ## 1. Project Architecture (Modular MECE Design)
-The system is built on a **Dual-Runtime Architecture** to ensure flexibility and data privacy.
+The system is built on a **Standalone Client-Side Architecture** to ensure maximum flexibility and data privacy.
 
-### 1.1 Local Mode (Client-Side)
+### 1.1 Local Mode (Default)
 - **Engine**: React + Web Worker (Background Processing).
 - **Scope**: Processes data entirely within the browser using `spc_logic.js`.
-- **Constraint**: Optimized for molds with up to 10 cavities.
-
-### 1.2 Server Mode (Backend-Side)
-- **Engine**: Python (FastAPI) + NumPy/Pandas.
-- **Scope**: Centralized analysis via `backend/analysis.py`.
-- **Capability**: Extended support for up to 32 cavities with high-precision approximation formulas.
+- **Security**: No data is uploaded to a server; all analysis occurs locally on the user's machine.
 
 ---
 
 ## 2. Core Logic & Statistical Engine
-Mutually exclusive components handling the "math" behind the visuals.
+Precision-engineered components handling the "math" behind the visuals.
 
 ### 2.1 Statistical Calculations
 - **Sigma Within ($\sigma_w$)**:
@@ -45,27 +40,26 @@ Implemented **Nelson Rules 1-6** to detect assignable causes:
 
 ## 4. Data Management & Auxiliary Utilities
 ### 4.1 Data Processing
-- **Excel Handling**: Memory-efficient parsing supporting large datasets.
+- **Excel Handling**: Memory-efficient parsing supporting large datasets via `xlsx` library.
 - **Precision Matching**: Automatic decimal alignment with source Excel formatting.
-- **Export System**: Specialized Excel report generator (Summary + Detail sheets).
+- **Export System**: Standalone Excel report generator (Summary + Detail sheets).
 
 ### 4.2 Legacy & Extension Tools
 Located in `/Nelson Rules` and `/NormalDistributionPlot`:
-- **VBA Modules**: standalone Excel macros for offline Nelson Rule tagging and Normal Distribution plotting.
+- **VBA Modules**: Standalone Excel macros for offline Nelson Rule tagging and Normal Distribution plotting.
 
 ---
 
 ## 5. Getting Started & Deployment
 ### 5.1 Installation
-1. **Frontend**: `cd frontend && npm install`
-2. **Backend (Optional)**: `cd backend && pip install -r requirements.txt`
+1. Run `InstallDependencies.bat` to install Node.js dependencies.
 
 ### 5.2 Execution
 - **One-Click Start**: Run `StartApplication.bat`.
-- **Manual**: `npm run dev` (Frontend) | `python main.py` (Backend).
+- **Manual**: `cd frontend && npm run dev`.
 
 ### 5.3 Deployment
-Fully compatible with **GitHub Pages** (auto-activates Local Mode).
+Fully compatible with **GitHub Pages** (requires static build).
 
 ---
-*Maintained under MECE Principles - 2026-01-04*
+*Maintained under MECE Principles - 2026-01-05*

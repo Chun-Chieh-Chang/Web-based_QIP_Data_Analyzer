@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
@@ -8,7 +7,6 @@ import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCirc
 // SPCAnalysis now runs in worker.js
 import SPCWorker from './utils/spc.worker.js?worker';
 
-const API_BASE = '/api';
 
 function App() {
   const [products, setProducts] = useState([]);  // Initialize with empty array
@@ -29,7 +27,7 @@ function App() {
   const [showViolationDetails, setShowViolationDetails] = useState(false); // Collapsible violation details
 
   // Local Mode State
-  const [isLocalMode, setIsLocalMode] = useState(false);
+  const [isLocalMode, setIsLocalMode] = useState(true);
   const [localFiles, setLocalFiles] = useState([]); // Array of File objects
 
   // State for cavity information
@@ -103,22 +101,7 @@ function App() {
     setExcludedBatches([]);
   };
 
-  // Check Backend Status on Mount
-  useEffect(() => {
-    // If running on GitHub Pages, we know there's no backend, so default to Local Mode immediately
-    if (window.location.hostname.includes('github.io')) {
-      console.log("GitHub Pages detected. Using Local Mode.");
-      setIsLocalMode(true);
-      return;
-    }
 
-    axios.get(`${API_BASE}/products`)
-      .then(() => setIsLocalMode(false))
-      .catch(() => {
-        console.log("Backend unreachable. Switching to Local Mode.");
-        setIsLocalMode(true);
-      });
-  }, []);
 
   // Handler for Local File Upload
   const handleLocalFileUpload = async (e) => {
@@ -136,151 +119,84 @@ function App() {
   // Helper to get file by product name
   const getLocalFile = (pName) => localFiles.find(f => f.name.includes(pName));
 
-  // Function to select data directory
-  const selectDataDirectory = async () => {
-    console.log("selectDataDirectory called");
-    try {
-      // For web applications, we can't directly select folders
-      // Instead, we'll prompt for the directory path
-      const directoryPath = prompt(
-        "請輸入資料夾的絕對路徑 (例如 C:/path/to/data):\n\n該資料夾應包含您的 QIP Excel 檔案。",
-        currentDataDir || ""
-      );
-      console.log("Path entered:", directoryPath);
 
-      if (directoryPath) {
-        setCurrentDataDir(directoryPath);
-        const response = await axios.post(`${API_BASE}/set-data-directory`, {
-          directory: directoryPath
-        });
-
-        if (response.data.status === 'success') {
-          alert(response.data.message);
-          // Reset the form to refresh the product list
-          setSelectedProduct('');
-          setProducts([]);
-          setData(null);
-
-          // Reload products
-          axios.get(`${API_BASE}/products`)
-            .then(res => {
-              setProducts(res.data.products);
-              if (res.data.products.length === 0) {
-                setError('No products found in the selected folder. Please verify the folder contains Excel files.');
-              }
-            })
-            .catch(err => setError('Failed to reload products: ' + err.message));
-        }
-      }
-    } catch (err) {
-      setError('Failed to set data directory: ' + err.message);
-    }
-  };
 
   const handleExportExcel = async () => {
     if (!data || !selectedProduct || !selectedItem) return;
 
     try {
-      if (isLocalMode) {
-        // Local Mode: Generate Excel using XLSX library
-        const wb = XLSX.utils.book_new();
+      // Local Mode: Generate Excel using XLSX library
+      const wb = XLSX.utils.book_new();
 
-        // 1. Prepare Summary Data
-        const summaryData = [
-          ["QIP Analysis Report", "", ""],
-          ["Part Number:", selectedProduct, ""],
-          ["Inspection Item:", selectedItem, ""],
-          ["Analysis Type:", analysisType === 'batch' ? "Batch Analysis" : analysisType === 'cavity' ? "Cavity Comparison" : "Group Trend", ""],
-          ["Generated:", new Date().toLocaleString(), ""],
-          ["", "", ""],
-          ["Capability Summary", "", ""]
-        ];
+      // 1. Prepare Summary Data
+      const summaryData = [
+        ["QIP Analysis Report", "", ""],
+        ["Part Number:", selectedProduct, ""],
+        ["Inspection Item:", selectedItem, ""],
+        ["Analysis Type:", analysisType === 'batch' ? "Batch Analysis" : analysisType === 'cavity' ? "Cavity Comparison" : "Group Trend", ""],
+        ["Generated:", new Date().toLocaleString(), ""],
+        ["", "", ""],
+        ["Capability Summary", "", ""]
+      ];
 
-        if (analysisType === 'batch' && data.capability) {
-          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-          summaryData.push(["Cpk", (data.capability.cpk || data.capability.xbar_cpk)?.toFixed(3), ""]);
-          summaryData.push(["Ppk", (data.capability.ppk || data.capability.xbar_ppk)?.toFixed(3), ""]);
-          summaryData.push(["Mean", (data.stats?.mean || data.stats?.xbar_mean)?.toFixed(dec), ""]);
-          summaryData.push(["Target", data.specs?.target?.toFixed(dec), ""]);
-          summaryData.push(["USL", data.specs?.usl?.toFixed(dec), ""]);
-          summaryData.push(["LSL", data.specs?.lsl?.toFixed(dec), ""]);
-        }
-
-        const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(wb, ws_summary, "Summary");
-
-        // 2. Prepare Detailed Data
-        let detailData = [];
-        if (analysisType === 'batch' && data.data) {
-          const header = ["Batch Label", "Value", "UCL", "LCL", "CL"];
-          if (showSpecLimits) header.push("Target", "USL", "LSL");
-          detailData.push(header);
-
-          const { labels, values } = data.data;
-          const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
-          const { target, usl, lsl, decimals } = data.specs || {};
-          const dec = decimals !== undefined ? decimals : 4;
-
-          labels.forEach((label, i) => {
-            const row = [
-              label,
-              values[i]?.toFixed(dec),
-              (ucl_x || ucl_xbar)?.toFixed(dec),
-              (lcl_x || lcl_xbar)?.toFixed(dec),
-              (cl_x || cl_xbar)?.toFixed(dec)
-            ];
-            if (showSpecLimits) row.push(target?.toFixed(dec), usl?.toFixed(dec), lsl?.toFixed(dec));
-            detailData.push(row);
-          });
-        } else if (analysisType === 'cavity' && data.cavities) {
-          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-          detailData.push(["Cavity Name", "Mean", "Cpk"]);
-          data.cavities.forEach(c => {
-            detailData.push([c.cavity, c.mean?.toFixed(dec), c.cpk?.toFixed(3)]);
-          });
-        } else if (analysisType === 'group' && data.groups) {
-          const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-          detailData.push(["Batch", "Min", "Max", "Avg"]);
-          data.groups.forEach(g => {
-            detailData.push([g.batch, g.min?.toFixed(dec), g.max?.toFixed(dec), g.avg?.toFixed(dec)]);
-          });
-        }
-
-        if (detailData.length > 0) {
-          const ws_data = XLSX.utils.aoa_to_sheet(detailData);
-          XLSX.utils.book_append_sheet(wb, ws_data, "Data");
-        }
-
-        // Write and download
-        const localFilename = `QIP_${selectedProduct}_${selectedItem}_${analysisType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-        XLSX.writeFile(wb, localFilename);
-      } else {
-        // Server Mode: Original Axios implementation
-        const response = await axios.post(`${API_BASE}/export/excel`, {
-          product: selectedProduct,
-          item: selectedItem,
-          startBatch: startBatch,
-          endBatch: endBatch,
-          analysisType: analysisType,
-          cavity: selectedCavity,
-          analysis_data: data
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          responseType: 'blob'
-        });
-
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        const serverFilename = response.headers['content-disposition']?.split('filename=')[1] || `QIP_${selectedProduct}_${selectedItem}_${analysisType}.xlsx`;
-        link.setAttribute('download', serverFilename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
+      if (analysisType === 'batch' && data.capability) {
+        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
+        summaryData.push(["Cpk", (data.capability.cpk || data.capability.xbar_cpk)?.toFixed(3), ""]);
+        summaryData.push(["Ppk", (data.capability.ppk || data.capability.xbar_ppk)?.toFixed(3), ""]);
+        summaryData.push(["Mean", (data.stats?.mean || data.stats?.xbar_mean)?.toFixed(dec), ""]);
+        summaryData.push(["Target", data.specs?.target?.toFixed(dec), ""]);
+        summaryData.push(["USL", data.specs?.usl?.toFixed(dec), ""]);
+        summaryData.push(["LSL", data.specs?.lsl?.toFixed(dec), ""]);
       }
+
+      const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, ws_summary, "Summary");
+
+      // 2. Prepare Detailed Data
+      let detailData = [];
+      if (analysisType === 'batch' && data.data) {
+        const header = ["Batch Label", "Value", "UCL", "LCL", "CL"];
+        if (showSpecLimits) header.push("Target", "USL", "LSL");
+        detailData.push(header);
+
+        const { labels, values } = data.data;
+        const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
+        const { target, usl, lsl, decimals } = data.specs || {};
+        const dec = decimals !== undefined ? decimals : 4;
+
+        labels.forEach((label, i) => {
+          const row = [
+            label,
+            values[i]?.toFixed(dec),
+            (ucl_x || ucl_xbar)?.toFixed(dec),
+            (lcl_x || lcl_xbar)?.toFixed(dec),
+            (cl_x || cl_xbar)?.toFixed(dec)
+          ];
+          if (showSpecLimits) row.push(target?.toFixed(dec), usl?.toFixed(dec), lsl?.toFixed(dec));
+          detailData.push(row);
+        });
+      } else if (analysisType === 'cavity' && data.cavities) {
+        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
+        detailData.push(["Cavity Name", "Mean", "Cpk"]);
+        data.cavities.forEach(c => {
+          detailData.push([c.cavity, c.mean?.toFixed(dec), c.cpk?.toFixed(3)]);
+        });
+      } else if (analysisType === 'group' && data.groups) {
+        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
+        detailData.push(["Batch", "Min", "Max", "Avg"]);
+        data.groups.forEach(g => {
+          detailData.push([g.batch, g.min?.toFixed(dec), g.max?.toFixed(dec), g.avg?.toFixed(dec)]);
+        });
+      }
+
+      if (detailData.length > 0) {
+        const ws_data = XLSX.utils.aoa_to_sheet(detailData);
+        XLSX.utils.book_append_sheet(wb, ws_data, "Data");
+      }
+
+      // Write and download
+      const localFilename = `QIP_${selectedProduct}_${selectedItem}_${analysisType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, localFilename);
     } catch (err) {
       setError('Export failed: ' + err.message);
     }
@@ -293,27 +209,12 @@ function App() {
     // Products will be loaded after user selects a data directory
   }, []);
 
-  // Fetch batches and set range defaults
   useEffect(() => {
     if (selectedProduct && selectedItem) {
-      if (isLocalMode) {
-        // Local Mode: Request batches from worker
-        workerRef.current.postMessage({ type: 'GET_BATCHES', payload: { item: selectedItem } });
-      } else {
-        // Server Mode
-        axios.get(`${API_BASE}/batches?product=${selectedProduct}&item=${selectedItem}`)
-          .then(res => {
-            setBatches(res.data.batches);
-            if (res.data.batches.length > 0) {
-              setStartBatch(res.data.batches[0].index);
-              setEndBatch(res.data.batches[res.data.batches.length - 1].index);
-              setExcludedBatches([]);
-            }
-          })
-          .catch(err => setError('Failed to load batches'));
-      }
+      // Local Mode: Request batches from worker
+      workerRef.current.postMessage({ type: 'GET_BATCHES', payload: { item: selectedItem } });
     }
-  }, [selectedProduct, selectedItem, isLocalMode]);
+  }, [selectedProduct, selectedItem]);
 
   // Clear data when selection changes to prevent stale UI
   useEffect(() => {
@@ -321,46 +222,21 @@ function App() {
     setError('');
   }, [selectedProduct, selectedItem, selectedCavity, analysisType, startBatch, endBatch, excludedBatches]);
 
-  // Items load on product change
   useEffect(() => {
     if (selectedProduct) {
-      if (isLocalMode) {
-        // Local Mode: Parse file in worker
-        const file = getLocalFile(selectedProduct);
-        if (file) {
-          setLoading(true);
-          // 1. Parse Excel in BG
-          workerRef.current.postMessage({ type: 'PARSE_EXCEL', payload: { file } });
-          // 2. Request Items
-          workerRef.current.postMessage({ type: 'GET_ITEMS', payload: { product: selectedProduct } });
-        }
-      } else {
-        // Server Mode
-        axios.get(`${API_BASE}/items?product=${selectedProduct}`)
-          .then(res => {
-            setItems(res.data.items);
-            if (res.data.items.length > 0) {
-              setSelectedItem(res.data.items[0]);
-            }
-          })
-          .catch(err => setError('Failed to load items'));
+      // Local Mode: Parse file in worker
+      const file = getLocalFile(selectedProduct);
+      if (file) {
+        setLoading(true);
+        // 1. Parse Excel in BG
+        workerRef.current.postMessage({ type: 'PARSE_EXCEL', payload: { file } });
+        // 2. Request Items
+        workerRef.current.postMessage({ type: 'GET_ITEMS', payload: { product: selectedProduct } });
       }
     }
-  }, [selectedProduct, isLocalMode]);
+  }, [selectedProduct]);
 
-  // Cavity information for Server Mode (Local mode handled via worker)
-  useEffect(() => {
-    if (!isLocalMode && selectedProduct && selectedItem) {
-      axios.get(`${API_BASE}/cavity-info?product=${selectedProduct}&item=${selectedItem}`)
-        .then(res => {
-          setCavityInfo(res.data);
-        })
-        .catch(err => {
-          console.log(`Cavity info not available: ${err.message}`);
-          setCavityInfo(null);
-        });
-    }
-  }, [selectedProduct, selectedItem, isLocalMode]);
+
 
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
@@ -368,42 +244,21 @@ function App() {
     setError('');
     setData(null);
 
-    const queryParams = `product=${selectedProduct}&item=${selectedItem}&startBatch=${startBatch}&endBatch=${endBatch}`;
-
     try {
-      if (isLocalMode) {
-        workerRef.current.postMessage({
-          type: 'RUN_ANALYSIS',
-          payload: {
-            analysisType,
-            selectedItem,
-            selectedCavity,
-            startBatch,
-            endBatch,
-            excludedBatches
-          }
-        });
-      } else {
-        // Server Analysis
-        let endpoint = '';
-        if (analysisType === 'batch') {
-          endpoint = `${API_BASE}/analysis/batch?${queryParams}&cavity=${selectedCavity}`;
-        } else if (analysisType === 'cavity') {
-          endpoint = `${API_BASE}/analysis/cavity?${queryParams}`;
-        } else {
-          endpoint = `${API_BASE}/analysis/group?${queryParams}`;
+      workerRef.current.postMessage({
+        type: 'RUN_ANALYSIS',
+        payload: {
+          analysisType,
+          selectedItem,
+          selectedCavity,
+          startBatch,
+          endBatch,
+          excludedBatches
         }
-
-        const res = await axios.get(endpoint);
-        setData(res.data);
-      }
+      });
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Analysis failed');
+      setError(err.message || 'Analysis failed');
       setLoading(false);
-    } finally {
-      if (!isLocalMode) {
-        setLoading(false);
-      }
     }
   };
 
@@ -429,21 +284,7 @@ function App() {
           <h1 style={{ fontSize: '1.2rem' }}>QIP SPC Analyst</h1>
         </div>
 
-        {isLocalMode && (
-          <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#fff3cd', border: '1px solid #ffecb5', borderRadius: '4px', fontSize: '0.8rem', color: '#856404' }}>
-            <strong>Offline Mode</strong><br />Running in browser (Serverless).
-          </div>
-        )}
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <button
-            style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
-            onClick={() => setIsLocalMode(!isLocalMode)}
-            className={isLocalMode ? 'secondary' : ''}
-          >
-            {isLocalMode ? 'Switch to Server Mode' : 'Switch to Local Mode'}
-          </button>
-        </div>
 
         <input
           type="file"
@@ -457,9 +298,9 @@ function App() {
         />
         <button
           id="selectDataBtn"
-          onClick={isLocalMode ? () => document.getElementById('fileInput').click() : selectDataDirectory}
+          onClick={() => document.getElementById('fileInput').click()}
         >
-          {isLocalMode ? 'Select Data Folder (Local)' : 'Select Data Folder (Server)'}
+          Select Data Folder
         </button>
 
         {/* Show message if no products are available */}
