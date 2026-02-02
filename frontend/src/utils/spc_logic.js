@@ -63,8 +63,9 @@ export class SPCAnalysis {
         if (!sheet || !sheet['!ref']) return [];
         const range = XLSX.utils.decode_range(sheet['!ref']);
         const batches = [];
-        for (let R = 2; R <= range.e.r; R++) {
-            const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
+        // NEW LAYOUT: Data starts at Row 2 (index 1), Batches in Column D (index 3)
+        for (let R = 1; R <= range.e.r; R++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 3 })];
             if (cell && cell.v !== undefined) {
                 batches.push({ index: R, name: this.formatBatchName(String(cell.v)) });
             }
@@ -92,18 +93,32 @@ export class SPCAnalysis {
     }
 
     getSpecs(sheet) {
-        const targetCell = sheet['B2'];
-        const uslCell = sheet['C2'];
-        const lslCell = sheet['D2'];
-        const target = targetCell ? parseFloat(targetCell.v) : null;
-        const usl = uslCell ? parseFloat(uslCell.v) : null;
-        const lsl = lslCell ? parseFloat(lslCell.v) : null;
+        // NEW LAYOUT: Target(A2), USL(B2), LSL(C2)
+        const targetCell = sheet['A2'];
+        const uslCell = sheet['B2'];
+        const lslCell = sheet['C2'];
+        const target = (targetCell && targetCell.v !== undefined) ? parseFloat(targetCell.v) : null;
+        const usl = (uslCell && uslCell.v !== undefined) ? parseFloat(uslCell.v) : null;
+        const lsl = (lslCell && lslCell.v !== undefined) ? parseFloat(lslCell.v) : null;
         const specPrecision = Math.max(
             getPrecision(targetCell ? (targetCell.w || targetCell.v) : null),
             getPrecision(uslCell ? (uslCell.w || uslCell.v) : null),
             getPrecision(lslCell ? (lslCell.w || lslCell.v) : null)
         );
-        return { target, usl, lsl, precision: specPrecision };
+
+        // Metadata extraction (A5: ProductName, B5: actual; A6: MeasurementUnit, B6: actual)
+        const prodNameLabel = sheet['A5']?.v;
+        const prodNameValue = sheet['B5']?.v;
+        const unitLabel = sheet['A6']?.v;
+        const unitValue = sheet['B6']?.v;
+
+        return {
+            target, usl, lsl, precision: specPrecision,
+            metadata: {
+                productName: String(prodNameLabel).includes("ProductName") ? prodNameValue : null,
+                unit: String(unitLabel).includes("MeasurementUnit") ? unitValue : null
+            }
+        };
     }
 
     // 1. Batch Analysis - Memory Optimized
@@ -136,14 +151,16 @@ export class SPCAnalysis {
         let labels = [];
         let values = [];
         let rangeValues = [];
+        let allRawPoints = []; // Collect all raw measurements for overall sigma
         let dataMaxPrecision = 0;
+        let rawData = []; // Store raw measurements for each row
 
-        for (let R = 2; R <= range.e.r; R++) {
+        for (let R = 1; R <= range.e.r; R++) {
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
 
-            const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
+            const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 3 })];
             const batchName = this.formatBatchName(batchCell ? String(batchCell.v) : `Batch ${R}`);
 
             let rowVals = [];
@@ -153,6 +170,7 @@ export class SPCAnalysis {
                     const v = parseFloat(cell.v);
                     if (!isNaN(v)) {
                         rowVals.push(v);
+                        allRawPoints.push(v); // Collect for overall sigma
                         if (cell.w || cell.v !== undefined) {
                             dataMaxPrecision = Math.max(dataMaxPrecision, getPrecision(cell.w || cell.v));
                         }
@@ -162,6 +180,7 @@ export class SPCAnalysis {
 
             if (rowVals.length > 0) {
                 labels.push(batchName);
+                rawData.push(rowVals); // Store raw values
                 if (isXbar) {
                     values.push(getMean(rowVals));
                     rangeValues.push(Math.max(...rowVals) - Math.min(...rowVals));
@@ -173,24 +192,26 @@ export class SPCAnalysis {
 
         if (values.length < 2) return { error: "Insufficient numeric data" };
 
-        const mean = getMean(values);
-        const overall_std = getStdDev(values);
+        // Use allRawPoints for overall sigma (Ppk), not batch averages
+        const mean = getMean(allRawPoints);
+        const overall_std = getStdDev(allRawPoints);
         let ucl_x, lcl_x, ucl_r, lcl_r, cl_r, within_std;
         let mr = [];
 
         if (isXbar) {
             const r_bar = getMean(rangeValues);
-            const n = Math.max(2, Math.min(targetCols.length, 10));
-            const A2_Map = { 2: 1.88, 3: 1.02, 4: 0.73, 5: 0.58, 6: 0.48, 7: 0.42, 8: 0.37, 9: 0.34, 10: 0.31 };
-            const D4_Map = { 2: 3.27, 3: 2.57, 4: 2.28, 5: 2.11, 6: 2.00, 7: 1.92, 8: 1.86, 9: 1.82, 10: 1.78 };
-            const D3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0.08, 8: 0.14, 9: 0.18, 10: 0.22 };
-            const d2_Map = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
-            ucl_x = mean + (A2_Map[n] || 0.31) * r_bar;
-            lcl_x = mean - (A2_Map[n] || 0.31) * r_bar;
-            ucl_r = (D4_Map[n] || 1.78) * r_bar;
-            lcl_r = (D3_Map[n] || 0) * r_bar;
+            const n = Math.max(2, Math.min(targetCols.length, 48)); // Extended to 48
+            const A2_Map = { 2: 1.88, 3: 1.02, 4: 0.73, 5: 0.58, 6: 0.48, 7: 0.42, 8: 0.37, 9: 0.34, 10: 0.31, 11: 0.29, 12: 0.27, 13: 0.25, 14: 0.24, 15: 0.22, 16: 0.21, 17: 0.20, 18: 0.19, 19: 0.19, 20: 0.18, 21: 0.17, 22: 0.17, 23: 0.16, 24: 0.16, 25: 0.15, 26: 0.15, 27: 0.14, 28: 0.14, 29: 0.13, 30: 0.13, 31: 0.13, 32: 0.12, 33: 0.12, 34: 0.12, 35: 0.11, 36: 0.11, 37: 0.11, 38: 0.10, 39: 0.10, 40: 0.10, 41: 0.10, 42: 0.10, 43: 0.09, 44: 0.09, 45: 0.09, 46: 0.09, 47: 0.09, 48: 0.09 };
+            const D4_Map = { 2: 3.27, 3: 2.57, 4: 2.28, 5: 2.11, 6: 2.00, 7: 1.92, 8: 1.86, 9: 1.82, 10: 1.78, 11: 1.74, 12: 1.72, 13: 1.69, 14: 1.67, 15: 1.65, 16: 1.64, 17: 1.62, 18: 1.61, 19: 1.60, 20: 1.59, 21: 1.58, 22: 1.57, 23: 1.56, 24: 1.55, 25: 1.54, 26: 1.54, 27: 1.53, 28: 1.53, 29: 1.52, 30: 1.52, 31: 1.51, 32: 1.51, 33: 1.50, 34: 1.50, 35: 1.50, 36: 1.49, 37: 1.49, 38: 1.49, 39: 1.48, 40: 1.48, 41: 1.48, 42: 1.47, 43: 1.47, 44: 1.47, 45: 1.47, 46: 1.46, 47: 1.46, 48: 1.46 };
+            const D3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0.08, 8: 0.14, 9: 0.18, 10: 0.22, 11: 0.26, 12: 0.28, 13: 0.31, 14: 0.33, 15: 0.35, 16: 0.36, 17: 0.38, 18: 0.39, 19: 0.40, 20: 0.41, 21: 0.43, 22: 0.43, 23: 0.44, 24: 0.45, 25: 0.46, 26: 0.46, 27: 0.47, 28: 0.47, 29: 0.48, 30: 0.48, 31: 0.49, 32: 0.49, 33: 0.50, 34: 0.50, 35: 0.50, 36: 0.51, 37: 0.51, 38: 0.51, 39: 0.52, 40: 0.52, 41: 0.52, 42: 0.53, 43: 0.53, 44: 0.53, 45: 0.53, 46: 0.54, 47: 0.54, 48: 0.54 };
+            const d2_Map = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078, 11: 3.173, 12: 3.258, 13: 3.336, 14: 3.407, 15: 3.472, 16: 3.532, 17: 3.588, 18: 3.640, 19: 3.689, 20: 3.735, 21: 3.778, 22: 3.819, 23: 3.858, 24: 3.895, 25: 3.931, 26: 3.964, 27: 3.997, 28: 4.027, 29: 4.057, 30: 4.086, 31: 4.113, 32: 4.139, 33: 4.165, 34: 4.189, 35: 4.213, 36: 4.236, 37: 4.259, 38: 4.280, 39: 4.301, 40: 4.322, 41: 4.341, 42: 4.361, 43: 4.379, 44: 4.398, 45: 4.415, 46: 4.433, 47: 4.450, 48: 4.466 };
+            const xbar_mean = getMean(values); // Use batch averages for control limits
+            ucl_x = xbar_mean + (A2_Map[n] || 0.09) * r_bar;
+            lcl_x = xbar_mean - (A2_Map[n] || 0.09) * r_bar;
+            ucl_r = (D4_Map[n] || 1.46) * r_bar;
+            lcl_r = (D3_Map[n] || 0.54) * r_bar;
             cl_r = r_bar;
-            within_std = r_bar / (d2_Map[n] || 3.078);
+            within_std = r_bar / (d2_Map[n] || 4.466);
         } else {
             for (let i = 1; i < values.length; i++) mr.push(Math.abs(values[i] - values[i - 1]));
             const mr_mean = getMean(mr);
@@ -268,9 +289,17 @@ export class SPCAnalysis {
             data: {
                 cavity_actual_name: isXbar ? "Average of All Cavities" : cavityName,
                 labels, values, r_values: isXbar ? rangeValues : mr, r_labels: labels,
-                mr_values: isXbar ? [] : mr
+                mr_values: isXbar ? [] : mr,
+                rawData,
+                targetColsHead: targetCols.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || ""))
             },
-            specs: { target: specs.target, usl: specs.usl, lsl: specs.lsl, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision },
+            specs: {
+                target: specs.target,
+                usl: specs.usl,
+                lsl: specs.lsl,
+                decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision,
+                metadata: specs.metadata
+            },
             violations: { xbar_violations, r_violations },
             violations_detail,
             distribution: {
@@ -412,7 +441,7 @@ export class SPCAnalysis {
             const headCell = sheet[XLSX.utils.encode_cell({ r: 0, c: C })];
             if (headCell && String(headCell.v).includes("穴")) {
                 const vals = [];
-                for (let R = 2; R <= range.e.r; R++) {
+                for (let R = 1; R <= range.e.r; R++) {
                     if (startBatch !== null && R < Number(startBatch)) continue;
                     if (endBatch !== null && R > Number(endBatch)) continue;
                     if (skipIndices.includes(R)) continue;
@@ -435,7 +464,7 @@ export class SPCAnalysis {
                 }
             }
         }
-        return { cavities: cavityData, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision } };
+        return { cavities: cavityData, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision, metadata: specs.metadata } };
     }
 
     async analyzeGroup(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
@@ -450,11 +479,11 @@ export class SPCAnalysis {
             if (cell && String(cell.v).includes("穴")) cavityIndices.push(C);
         }
         const groups = [];
-        for (let R = 2; R <= range.e.r; R++) {
+        for (let R = 1; R <= range.e.r; R++) {
             if (startBatch !== null && R < Number(startBatch)) continue;
             if (endBatch !== null && R > Number(endBatch)) continue;
             if (skipIndices.includes(R)) continue;
-            const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 0 })];
+            const batchCell = sheet[XLSX.utils.encode_cell({ r: R, c: 3 })];
             const batchName = this.formatBatchName(batchCell ? String(batchCell.v) : `Batch ${R}`);
             const rowVals = [];
             cavityIndices.forEach(C => {
@@ -471,6 +500,6 @@ export class SPCAnalysis {
                 groups.push({ batch: batchName, min: Math.min(...rowVals), max: Math.max(...rowVals), avg: getMean(rowVals) });
             }
         }
-        return { groups, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision } };
+        return { groups: groups, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision, metadata: specs.metadata }, cavity_names: cavityIndices.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || "")) };
     }
 }

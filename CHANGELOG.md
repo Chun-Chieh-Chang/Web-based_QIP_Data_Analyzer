@@ -1,5 +1,17 @@
 # Project Change Log
 
+## [v5.5] - 2026-02-02
+### Changed
+- **Excel Layout Update**: Redesigned Excel import and export logic to match the new industry standard layout.
+  - Column A/B/C: Target/USL/LSL (previously B/C/D).
+  - Column D: Production Batch Number (previously A).
+  - Column E+: Measurement Data (Cavities).
+- **Metadata Management**: Added support for reading and writing `ProductName` and `MeasurementUnit` in fixed positions (Rows 5 & 6) of the Excel sheet.
+- **Improved Export Template**: The exported Excel file now follows a single-sheet representative layout compatible with professional quality reports.
+- **Minimum Row Enforcement**: Exporting now ensures at least 6 rows are populated to maintain layout integrity even with small datasets.
+- **Compatibility**: Updated all analysis modules (Batch, Cavity, Group) to support the new data structure while maintaining calculation accuracy.
+
+
 ## [v5.0] - 2026-01-05
 ### Removed
 - **Server Mode Functionality**: Completely removed the Python backend (FastAPI) and server-side analysis logic.

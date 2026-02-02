@@ -25,6 +25,7 @@ function App() {
   const [endBatch, setEndBatch] = useState('');
   const [excludedBatches, setExcludedBatches] = useState([]); // Array of indices to skip
   const [showViolationDetails, setShowViolationDetails] = useState(false); // Collapsible violation details
+  const [showMetricsInfo, setShowMetricsInfo] = useState(false); // SPC Metrics Info Modal
 
   // File Upload State
   const [localFiles, setLocalFiles] = useState([]); // Array of File objects
@@ -123,79 +124,127 @@ function App() {
     if (!data || !selectedProduct || !selectedItem) return;
 
     try {
-      // Local Mode: Generate Excel using XLSX library
       const wb = XLSX.utils.book_new();
+      let sheetRows = [];
 
-      // 1. Prepare Summary Data
-      const summaryData = [
-        ["QIP Analysis Report", "", ""],
-        ["Part Number:", selectedProduct, ""],
-        ["Inspection Item:", selectedItem, ""],
-        ["Analysis Type:", analysisType === 'batch' ? "Batch Analysis" : analysisType === 'cavity' ? "Cavity Comparison" : "Group Trend", ""],
-        ["Generated:", new Date().toLocaleString(), ""],
-        ["", "", ""],
-        ["Capability Summary", "", ""]
-      ];
-
-      if (analysisType === 'batch' && data.capability) {
-        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-        summaryData.push(["Cpk", (data.capability.cpk || data.capability.xbar_cpk)?.toFixed(3), ""]);
-        summaryData.push(["Ppk", (data.capability.ppk || data.capability.xbar_ppk)?.toFixed(3), ""]);
-        summaryData.push(["Mean", (data.stats?.mean || data.stats?.xbar_mean)?.toFixed(dec), ""]);
-        summaryData.push(["Target", data.specs?.target?.toFixed(dec), ""]);
-        summaryData.push(["USL", data.specs?.usl?.toFixed(dec), ""]);
-        summaryData.push(["LSL", data.specs?.lsl?.toFixed(dec), ""]);
+      // 1. Determine Column Headers
+      let cavityHeaders = [];
+      if (analysisType === 'batch') {
+        cavityHeaders = data.data?.targetColsHead || [];
+      } else if (analysisType === 'cavity' && data.cavities) {
+        cavityHeaders = ["Mean", "Cpk"];
+      } else if (analysisType === 'group' && data.groups) {
+        cavityHeaders = ["Min", "Max", "Avg"];
       }
 
-      const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, ws_summary, "Summary");
+      const header = ["Target", "USL", "LSL", "生產批號", ...cavityHeaders];
+      sheetRows.push(header);
 
-      // 2. Prepare Detailed Data
-      let detailData = [];
+      // 2. Prepare Data and Metadata
+      const specs = data.specs || {};
+      const metadata = specs.metadata || {};
+      const metaProd = metadata.productName || selectedProduct;
+      const metaUnit = metadata.unit || "";
+
+      let dataRows = [];
       if (analysisType === 'batch' && data.data) {
-        const header = ["Batch Label", "Value", "UCL", "LCL", "CL"];
-        if (showSpecLimits) header.push("Target", "USL", "LSL");
-        detailData.push(header);
-
-        const { labels, values } = data.data;
-        const { ucl_x, lcl_x, cl_x, ucl_xbar, lcl_xbar, cl_xbar } = data.control_limits;
-        const { target, usl, lsl, decimals } = data.specs || {};
-        const dec = decimals !== undefined ? decimals : 4;
-
+        const { labels, rawData } = data.data;
         labels.forEach((label, i) => {
-          const row = [
-            label,
-            values[i]?.toFixed(dec),
-            (ucl_x || ucl_xbar)?.toFixed(dec),
-            (lcl_x || lcl_xbar)?.toFixed(dec),
-            (cl_x || cl_xbar)?.toFixed(dec)
-          ];
-          if (showSpecLimits) row.push(target?.toFixed(dec), usl?.toFixed(dec), lsl?.toFixed(dec));
-          detailData.push(row);
+          dataRows.push({
+            batch: label,
+            values: rawData[i] || []
+          });
         });
       } else if (analysisType === 'cavity' && data.cavities) {
-        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-        detailData.push(["Cavity Name", "Mean", "Cpk"]);
-        data.cavities.forEach(c => {
-          detailData.push([c.cavity, c.mean?.toFixed(dec), c.cpk?.toFixed(3)]);
-        });
+        dataRows = data.cavities.map(c => ({
+          batch: c.cavity,
+          values: [c.mean, c.cpk]
+        }));
       } else if (analysisType === 'group' && data.groups) {
-        const dec = data.specs?.decimals !== undefined ? data.specs.decimals : 4;
-        detailData.push(["Batch", "Min", "Max", "Avg"]);
-        data.groups.forEach(g => {
-          detailData.push([g.batch, g.min?.toFixed(dec), g.max?.toFixed(dec), g.avg?.toFixed(dec)]);
-        });
+        dataRows = data.groups.map(g => ({
+          batch: g.batch,
+          values: [g.min, g.max, g.avg]
+        }));
       }
 
-      if (detailData.length > 0) {
-        const ws_data = XLSX.utils.aoa_to_sheet(detailData);
-        XLSX.utils.book_append_sheet(wb, ws_data, "Data");
+      // 3. Construct Final Sheet Data (Ensuring at least 6 rows)
+      const numBatches = dataRows.length;
+      const totalRows = Math.max(numBatches, 5); // Index 4 is Row 5, Index 5 is Row 6
+
+      for (let i = 0; i < totalRows; i++) {
+        let excelRow = [];
+
+        // Column A, B, C: Specs and Metadata Labels
+        if (i === 0) { // Row 2: Setup specific layout rule
+          excelRow[0] = specs.target;
+          excelRow[1] = specs.usl;
+          excelRow[2] = specs.lsl;
+        } else if (i === 3) { // Row 5: ProductName
+          excelRow[0] = "ProductName";
+          excelRow[1] = metaProd;
+          excelRow[2] = "";
+        } else if (i === 4) { // Row 6: MeasurementUnit
+          excelRow[0] = "MeasurementUnit";
+          excelRow[1] = metaUnit;
+          excelRow[2] = "";
+        } else {
+          excelRow[0] = "";
+          excelRow[1] = "";
+          excelRow[2] = "";
+        }
+
+        // Column D: Batch Label
+        if (i < numBatches) {
+          excelRow[3] = dataRows[i].batch;
+          // Column E+: Data Values
+          const vals = dataRows[i].values || [];
+          vals.forEach((v, vIdx) => {
+            excelRow[4 + vIdx] = typeof v === 'number' ? v : v;
+          });
+        } else {
+          excelRow[3] = "";
+        }
+
+        sheetRows.push(excelRow);
       }
 
-      // Write and download
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+
+      // Auto-width for columns
+      const wscols = [
+        { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 20 }
+      ];
+      cavityHeaders.forEach(() => wscols.push({ wch: 12 }));
+      ws['!cols'] = wscols;
+
+      XLSX.utils.book_append_sheet(wb, ws, "QIP_Report");
+
+      // 4. Also add a summary/stats sheet for convenience (Original functionality)
+      // This helps users see Cpk/Ppk easily without looking at raw data
+      if (analysisType === 'batch' && data.capability) {
+        const dec = specs.decimals !== undefined ? specs.decimals : 4;
+        const summaryData = [
+          ["QIP Analysis Report", "", ""],
+          ["Part Number:", selectedProduct, ""],
+          ["Inspection Item:", selectedItem, ""],
+          ["Generated:", new Date().toLocaleString(), ""],
+          ["", "", ""],
+          ["Capability Summary", "", ""],
+          ["Cpk", (data.capability.cpk || data.capability.xbar_cpk)?.toFixed(3), ""],
+          ["Ppk", (data.capability.ppk || data.capability.xbar_ppk)?.toFixed(3), ""],
+          ["Mean", (data.stats?.mean || data.stats?.xbar_mean)?.toFixed(dec), ""],
+          ["Target", specs.target?.toFixed(dec), ""],
+          ["USL", specs.usl?.toFixed(dec), ""],
+          ["LSL", specs.lsl?.toFixed(dec), ""]
+        ];
+        const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, ws_summary, "Stats_Summary");
+      }
+
       const localFilename = `QIP_${selectedProduct}_${selectedItem}_${analysisType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       XLSX.writeFile(wb, localFilename);
     } catch (err) {
+      console.error(err);
       setError('Export failed: ' + err.message);
     }
   };
@@ -501,7 +550,28 @@ function App() {
 
             <div className="card">
               <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>製程能力摘要: {selectedItem}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  製程能力摘要: {selectedItem}
+                  <button
+                    onClick={() => setShowMetricsInfo(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.4rem 0.8rem',
+                      color: '#fff',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    <Calculator size={14} /> 指標說明
+                  </button>
+                </span>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '400' }}>{selectedCavity ? `模穴: ${selectedCavity}` : '全穴平均'}</span>
               </h2>
               <div className="stats-grid" style={{ marginTop: '1rem' }}>
@@ -1453,6 +1523,112 @@ function App() {
                 <li><strong>組內分散度 (Within-subgroup Variation)</strong>: 紅線 (Max/Min) 的間際反映了模具的<strong>物理一致性</strong>。間距擴大代表多穴填充失衡，或個別模穴噴嘴堵塞。</li>
                 <li><strong>組間飄移度 (Between-subgroup Variation)</strong>: 藍線 (Avg) 的波動反映了<strong>生產環境穩定度</strong>。劇烈波動通常源於環境溫濕度變化、成型循環時間 (Cycle Time) 不穩定或材料批次黏度差異。</li>
               </ul>
+            </div>
+          </div>
+        )}
+
+        {/* SPC Metrics Info Modal */}
+        {showMetricsInfo && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
+          }}>
+            <div style={{
+              backgroundColor: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '85vh',
+              overflow: 'auto'
+            }}>
+              <div style={{
+                position: 'sticky',
+                top: 0,
+                backgroundColor: '#fff',
+                padding: '1.5rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 'bold' }}>
+                  <Calculator size={24} color="#6366f1" /> SPC 指標計算說明
+                </h3>
+                <button onClick={() => setShowMetricsInfo(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>✕</button>
+              </div>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Cpk */}
+                <div style={{ backgroundColor: '#ecfdf5', padding: '1rem', borderRadius: '12px', border: '1px solid #a7f3d0' }}>
+                  <h4 style={{ margin: '0 0 0.5rem', color: '#047857' }}>Cpk (製程能力指數)</h4>
+                  <code style={{ display: 'block', backgroundColor: '#fff', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    Cpk = min[ (USL - μ) / 3σ<sub>within</sub>, (μ - LSL) / 3σ<sub>within</sub> ]
+                  </code>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#374151' }}>短期製程能力，考慮製程中心偏移。使用組內標準差 (σ_within = R̄/d₂)。</p>
+                </div>
+                {/* Ppk */}
+                <div style={{ backgroundColor: '#eff6ff', padding: '1rem', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+                  <h4 style={{ margin: '0 0 0.5rem', color: '#1d4ed8' }}>Ppk (製程績效指數)</h4>
+                  <code style={{ display: 'block', backgroundColor: '#fff', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    Ppk = min[ (USL - μ) / 3σ<sub>overall</sub>, (μ - LSL) / 3σ<sub>overall</sub> ]
+                  </code>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#374151' }}>長期製程績效，使用所有原始數據點的整體標準差。</p>
+                </div>
+                {/* Sigma */}
+                <div style={{ backgroundColor: '#fefce8', padding: '1rem', borderRadius: '12px', border: '1px solid #fde047' }}>
+                  <h4 style={{ margin: '0 0 0.5rem', color: '#a16207' }}>σ<sub>within</sub> (組內標準差)</h4>
+                  <code style={{ display: 'block', backgroundColor: '#fff', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    σ<sub>within</sub> = R̄ / d₂
+                  </code>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#374151' }}>R̄ 為子組全距的平均值。d₂ 為依子組大小 (n) 查表的常數。</p>
+                </div>
+                {/* d2 Table */}
+                <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', color: '#334155' }}>d₂ 常數對照表</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#e2e8f0' }}>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>n</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>2</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>3</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>4</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>5</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>6</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>8</th>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1' }}>10</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th style={{ padding: '0.5rem', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9' }}>d₂</th>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>1.128</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>1.693</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>2.059</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>2.326</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>2.534</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>2.847</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #cbd5e1', textAlign: 'center' }}>3.078</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Interpretation */}
+                <div style={{ backgroundColor: '#eef2ff', padding: '1rem', borderRadius: '12px', border: '1px solid #c7d2fe' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', color: '#4338ca' }}>判讀標準</h4>
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#374151' }}>
+                    <li style={{ marginBottom: '0.3rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981', marginRight: '0.5rem' }}></span><strong>Cpk ≥ 1.67:</strong> 優異製程能力</li>
+                    <li style={{ marginBottom: '0.3rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#22c55e', marginRight: '0.5rem' }}></span><strong>Cpk ≥ 1.33:</strong> 良好製程能力</li>
+                    <li style={{ marginBottom: '0.3rem' }}><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f59e0b', marginRight: '0.5rem' }}></span><strong>Cpk ≥ 1.00:</strong> 可接受</li>
+                    <li><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444', marginRight: '0.5rem' }}></span><strong>Cpk &lt; 1.00:</strong> 需改善</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         )}
