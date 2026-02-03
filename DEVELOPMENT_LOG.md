@@ -21,6 +21,30 @@ The project structure was refactored to align with MECE principles, ensuring a c
 
 ---
 
+# Development Log - Advanced SPC Algorithms (ANOVA & Z-Chart)
+
+## Task Overview (2026-02-03)
+Implemented high-end SPC analysis features: One-way ANOVA for geometric uniformity and Z-Charts for standardized short-run process monitoring.
+
+## 1. ANOVA for Geometric Uniformity
+- **Implementation**: Added one-way ANOVA (Analysis of Variance) to assess if differences between multiple mold cavities are statistically significant.
+- **Statistical Engine**: Built helper functions for F-distribution P-value calculation (`logGamma`, `betai`).
+- **Logic**: Replaced 25% ratio heuristic with a rigorous P < 0.05 significance test in `spc_logic.js`.
+
+## 2. Z-Chart (Standardized Control Chart)
+- **Goal**: Allow monitoring of different parts or cavities on a single chart by standardizing data.
+- **Calculation**: Standardized data per cavity (subgroup) using `(X - mean) / sigma`.
+- **UI Integration**: Added a toggle button in Step 2 to switch between Standard X-bar and Z-score modes.
+
+## 3. UI/UX Improvements
+- **Uniformity Alerts**: Redesigned Step 3 alerts to show ANOVA results (F-value, P-value).
+- **Stability Fixes**: Resolved critical 500 Internal Server Errors caused by JSX syntax nesting issues during modular feature integration.
+
+## 4. Technical Validation
+- **ANOVA Testing**: Verified against known disparate datasets to confirm P-value accuracy.
+- **Z-Chart Limits**: Implemented ±3/sqrt(n) limits for standardized monitoring.
+- **Environment**: Cleared Vite cache and resolved Port conflicts to ensure smooth developer experience.
+
 # Development Log - Excel Layout Adjustment
 
 ## Task Overview

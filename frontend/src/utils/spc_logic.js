@@ -28,10 +28,199 @@ const getPrecision = (data) => {
 // d2 constant for n=2 (Moving Range)
 const D2 = 1.128;
 
+// Helper: Quartiles for Box Plot
+const getQuartiles = (data) => {
+    if (data.length === 0) return { q1: 0, median: 0, q3: 0, min: 0, max: 0, outliers: [] };
+    const sorted = [...data].sort((a, b) => a - b);
+    const pos = (p) => {
+        const index = p * (sorted.length - 1);
+        const lower = Math.floor(index);
+        const upper = Math.ceil(index);
+        const weight = index - lower;
+        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    };
+    const q1 = pos(0.25);
+    const median = pos(0.5);
+    const q3 = pos(0.75);
+    const iqr = q3 - q1;
+    const lowerWhisker = Math.max(sorted[0], q1 - 1.5 * iqr);
+    const upperWhisker = Math.min(sorted[sorted.length - 1], q3 + 1.5 * iqr);
+    const outliers = sorted.filter(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr);
+    return { q1, median, q3, min: sorted[0], max: sorted[sorted.length - 1], lowerWhisker, upperWhisker, outliers };
+};
+
+// Log Gamma Function for F-distribution calculation
+function logGamma(n) {
+    const arr = [
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5
+    ];
+    let x = n;
+    let y = n;
+    let tmp = x + 5.5;
+    tmp -= (x + 0.5) * Math.log(tmp);
+    let ser = 1.000000000190015;
+    for (let j = 0; j < 6; j++) ser += arr[j] / ++y;
+    return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+
+// Incomplete Beta Function for F-distribution
+function betai(a, b, x) {
+    let bt;
+    if (x === 0.0 || x === 1.0) bt = 0.0;
+    else bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1.0 - x));
+
+    if (x < (a + 1.0) / (a + b + 2.0)) {
+        return bt * betacf(a, b, x) / a;
+    } else {
+        return 1.0 - bt * betacf(b, a, 1.0 - x) / b;
+    }
+}
+
+// Continued Fraction for Beta
+function betacf(a, b, x) {
+    const MAXIT = 100;
+    const EPS = 3.0e-7;
+    const FPMIN = 1.0e-30;
+
+    let qab = a + b;
+    let qap = a + 1.0;
+    let qam = a - 1.0;
+    let c = 1.0;
+    let d = 1.0 - qab * x / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    d = 1.0 / d;
+    let h = d;
+
+    for (let m = 1; m <= MAXIT; m++) {
+        let m2 = 2 * m;
+        let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1.0 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1.0 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1.0 / d;
+        h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1.0 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1.0 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1.0 / d;
+        let del = d * c;
+        h *= del;
+        if (Math.abs(del - 1.0) < EPS) break;
+    }
+    return h;
+}
+
+// F-Distribution CDF -> P-value
+// Returns P(F > f)
+function fDistributionPValue(f, df1, df2) {
+    if (f <= 0) return 1.0;
+    const x = df2 / (df2 + df1 * f);
+    return betai(0.5 * df2, 0.5 * df1, x);
+}
+
 export class SPCAnalysis {
     formatBatchName(name) {
         if (typeof name !== 'string') return name;
         return name.split('-')[0];
+    }
+
+    // New: Calculate Geometric Uniformity (Box Plot data for each cavity)
+    // New: Calculate Geometric Uniformity (Box Plot data for each cavity) + ANOVA
+    getMultiCavityUniformity(rawData, cavityNames) {
+        // 1. Prepare Per-Cavity Data
+        const cavityData = cavityNames.map((name, i) => {
+            const cavityValues = rawData.map(row => row[i]).filter(v => v !== undefined && v !== null);
+            return {
+                cavity: name,
+                stats: getQuartiles(cavityValues),
+                data: cavityValues
+            };
+        });
+
+        // 2. Perform One-Way ANOVA
+        // H0: All cavity means are equal (Uniformity holds)
+        // H1: At least one cavity mean is different
+        let grandSum = 0;
+        let grandN = 0;
+        let SSB = 0; // Sum of Squares Between
+        let SSW = 0; // Sum of Squares Within
+        let K = cavityNames.length; // Number of groups
+
+        // Calculate Grand Mean and Per-Group stats
+        const groupStats = cavityData.map(c => {
+            const n = c.data.length;
+            const sum = c.data.reduce((a, b) => a + b, 0);
+            const mean = n > 0 ? sum / n : 0;
+            grandSum += sum;
+            grandN += n;
+
+            // Calc SS for this group (part of SSW)
+            const ss = c.data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+            SSW += ss;
+
+            return { n, mean, sum };
+        });
+
+        const grandMean = grandN > 0 ? grandSum / grandN : 0;
+
+        // Calculate SSB
+        groupStats.forEach(g => {
+            SSB += g.n * Math.pow(g.mean - grandMean, 2);
+        });
+
+        const dfBetween = K - 1;
+        const dfWithin = grandN - K;
+
+        let fValue = 0;
+        let pValue = 1.0;
+        let isSignificant = false;
+
+        if (dfBetween > 0 && dfWithin > 0) {
+            const MSBetween = SSB / dfBetween;
+            const MSWithin = SSW / dfWithin;
+            // If MSWithin is 0 (zero variance within groups):
+            // - If MSBetween > 0, groups are different => F is Infinite (Huge)
+            // - If MSBetween == 0, groups are identical => F is 0
+            if (MSWithin <= 1e-9) {
+                fValue = MSBetween > 1e-9 ? 1e9 : 0;
+            } else {
+                fValue = MSBetween / MSWithin;
+            }
+            pValue = fDistributionPValue(fValue, dfBetween, dfWithin);
+            isSignificant = pValue < 0.05;
+        }
+
+        return {
+            cavities: cavityData,
+            anova: {
+                fValue,
+                pValue,
+                isSignificant,
+                dfBetween,
+                dfWithin,
+                message: isSignificant
+                    ? `ANOVA 檢定 (P=${pValue.toFixed(4)}) 顯示模穴間存在顯著差異。`
+                    : `ANOVA 檢定 (P=${pValue.toFixed(4)}) 顯示模穴間無顯著差異。`
+            }
+        };
+    }
+
+    // New: Identify suspicious points across the whole dataset
+    getGlobalOutliers(allValues) {
+        const stats = getQuartiles(allValues);
+        return stats.outliers.map(val => ({
+            value: val,
+            type: 'Statistical Outlier (IQR)',
+            reason: 'Value falls outside 1.5 * IQR range'
+        }));
     }
 
     async parseExcel(file) {
@@ -154,6 +343,10 @@ export class SPCAnalysis {
         let allRawPoints = []; // Collect all raw measurements for overall sigma
         let dataMaxPrecision = 0;
         let rawData = []; // Store raw measurements for each row
+        let contributors = []; // Store outlier info {min, max, minCavity, maxCavity}
+
+        // Pre-fetch cavity headers for mapping
+        const cavityHeaders = targetCols.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || ""));
 
         for (let R = 1; R <= range.e.r; R++) {
             if (startBatch !== null && R < Number(startBatch)) continue;
@@ -184,8 +377,23 @@ export class SPCAnalysis {
                 if (isXbar) {
                     values.push(getMean(rowVals));
                     rangeValues.push(Math.max(...rowVals) - Math.min(...rowVals));
+
+                    // Track min/max contributors
+                    let minIdx = 0;
+                    let maxIdx = 0;
+                    for (let i = 1; i < rowVals.length; i++) {
+                        if (rowVals[i] < rowVals[minIdx]) minIdx = i;
+                        if (rowVals[i] > rowVals[maxIdx]) maxIdx = i;
+                    }
+                    contributors.push({
+                        min: rowVals[minIdx],
+                        max: rowVals[maxIdx],
+                        minCavity: cavityHeaders[minIdx] || `C${minIdx + 1}`,
+                        maxCavity: cavityHeaders[maxIdx] || `C${maxIdx + 1}`
+                    });
                 } else {
                     values.push(rowVals[0]);
+                    contributors.push(null);
                 }
             }
         }
@@ -278,8 +486,63 @@ export class SPCAnalysis {
             curve_overall.push(normalPDF(x, mean, overall_std) * values.length * binWidth);
         }
 
+        // --- Z-Chart Calculation (Standardized Control Chart) ---
+        // Z = (X - Mean) / StdDev. If multi-cavity, standardize per cavity using its own stats to normalize offset.
+        let z_stats = null;
+
+        if (isXbar && rawData.length > 0 && targetCols.length > 0) {
+            // 1. Calculate Per-Cavity Statistics
+            const numCavities = rawData[0].length;
+            const cavityMeans = Array(numCavities).fill(0);
+            const cavityStds = Array(numCavities).fill(0);
+
+            for (let cIdx = 0; cIdx < numCavities; cIdx++) {
+                const colData = rawData.map(row => row[cIdx]).filter(v => v !== undefined && !isNaN(v));
+                cavityMeans[cIdx] = getMean(colData);
+                cavityStds[cIdx] = getStdDev(colData);
+            }
+
+            // 2. Transform to Z-scores
+            // zRawData[row][col]
+            const zRawData = rawData.map(row => {
+                return row.map((val, cIdx) => {
+                    if (cavityStds[cIdx] === 0) return 0;
+                    return (val - cavityMeans[cIdx]) / cavityStds[cIdx];
+                });
+            });
+
+            // 3. Compute Batch Z-Bar and Z-Range
+            // Z-Bar = Average of Z-scores in the batch
+            const zValues = zRawData.map(row => getMean(row));
+
+            // UCL/LCL for Z-Bar Chart: +/- 3 / sqrt(n)
+            // But usually Z-Chart plots Z*sqrt(n) to make limits +/-3?
+            // Let's stick to plotting Actual Z-Bar. Limits are +/- 3/sqrt(n).
+            const n = Math.max(2, numCavities);
+            const z_cl = 0;
+            const z_ucl = 3 / Math.sqrt(n);
+            const z_lcl = -3 / Math.sqrt(n);
+
+            z_stats = {
+                values: zValues,
+                ucl: z_ucl,
+                lcl: z_lcl,
+                cl: z_cl,
+                labels: labels
+            };
+        }
+
         return {
-            stats: { mean, within_std, overall_std, std_within: within_std, std_overall: overall_std, count: values.length },
+            stats: {
+                mean,
+                within_std,
+                overall_std,
+                std_within: within_std,
+                std_overall: overall_std,
+                count: values.length,
+                min: minVal,
+                max: maxVal
+            },
             control_limits: {
                 ucl_x, lcl_x, cl_x: mean, ucl_r, lcl_r, cl_r,
                 ucl_xbar: ucl_x, lcl_xbar: lcl_x, cl_xbar: mean,
@@ -288,11 +551,16 @@ export class SPCAnalysis {
             capability: { cpk, ppk, xbar_cpk: cpk, xbar_ppk: ppk },
             data: {
                 cavity_actual_name: isXbar ? "Average of All Cavities" : cavityName,
+                z_stats, // Return Z statistics
                 labels, values, r_values: isXbar ? rangeValues : mr, r_labels: labels,
                 mr_values: isXbar ? [] : mr,
                 rawData,
-                targetColsHead: targetCols.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || ""))
+                allRawPoints,
+                targetColsHead: targetCols.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || "")),
+                contributors
             },
+            uniformity: isXbar ? this.getMultiCavityUniformity(rawData, targetCols.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || ""))) : null,
+            global_outliers: this.getGlobalOutliers(allRawPoints),
             specs: {
                 target: specs.target,
                 usl: specs.usl,
