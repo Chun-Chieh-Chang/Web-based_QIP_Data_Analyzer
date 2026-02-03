@@ -1,3 +1,26 @@
+# Development Log - Project Reorganization
+
+## Task: MECE Architecture Cleanup (2026-02-03)
+The project structure was refactored to align with MECE principles, ensuring a clear separation between code, documentation, and reference materials.
+
+### 1. Structural Changes
+- **New `docs/` Hub**: Created a centralized documentation directory.
+  - `docs/specs/`: Technical specifications and architecture docs.
+  - `docs/manual/`: User-facing manuals.
+  - `docs/reference/`: Legacy VBA modules and external references.
+- **Root Cleanup**: Removed non-essential documentation files from the root to improve project discoverability.
+
+### 2. Documentation Updates
+- Updated `README.md` with new pathing and a modernized structure table.
+- Revised `PROJECT_STRUCTURE.md` to reflect the version 6.0 architecture.
+- Synchronized `CHANGELOG.md` with the new version bump.
+
+### 3. MECE Validation Check
+- **Mutually Exclusive**: No documentation files reside in the root alongside code-related config; legacy tools are strictly in `reference/`.
+- **Collectively Exhaustive**: All previous information is preserved and categorized; developer/user/maintenance paths are clearly defined.
+
+---
+
 # Development Log - Excel Layout Adjustment
 
 ## Task Overview

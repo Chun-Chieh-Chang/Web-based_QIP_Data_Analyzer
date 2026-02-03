@@ -39,72 +39,64 @@ frontend/
 
 ## 2. Documentation Layer
 
-### 2.1 User-Facing Documentation
+### 2.1 Core READMEs
 ```
 /
 ├── README.md                 # Project Overview & Quick Start
-└── SPC_Tool_User_Manual.md   # Detailed Usage Guide
-```
-
-**Purpose**: End-user guidance and onboarding
-
-### 2.2 Development Documentation
-```
-/
 ├── CHANGELOG.md              # Version History
-├── frontend/README.md        # Technical Architecture Details
-└── PROJECT_STRUCTURE.md      # This file
+└── DEVELOPMENT_LOG.md        # Technical dev diary
 ```
 
-**Purpose**: Developer reference and maintenance
+**Purpose**: Project entry points and history
+
+### 2.2 Specifications & Manuals
+```
+docs/
+├── specs/
+│   ├── PROJECT_STRUCTURE.md  # This file
+│   ├── SPC_Calculation_Logic.md
+│   └── NELSON_RULES_VERIFICATION.md
+└── manual/
+    └── SPC_Tool_User_Manual.md
+```
+
+**Purpose**: Technical specs and user guidance
+
+### 2.3 Reference Archive
+```
+docs/reference/
+├── Nelson Rules/             # Excel VBA reference
+└── NormalDistributionPlot/   # Excel VBA reference
+```
+
+**Purpose**: Legacy reference material
 
 ---
 
-## 3. Auxiliary Tools Layer
+## 3. Configuration & Automation Layer
 
-### 3.1 Legacy Utilities
-```
-/
-├── Nelson Rules/             # Standalone Excel VBA Module
-└── NormalDistributionPlot/   # Standalone Excel VBA Module
-```
-
-**Purpose**: Offline analysis for users without web access
-
----
-
-## 4. Configuration Layer
-
-### 4.1 Project Configuration
+### 3.1 Project Configuration
 ```
 /
 ├── package.json              # Root project metadata
 ├── .gitignore                # Version control exclusions
+├── .gitattributes            # Git attributes
 └── LICENSE                   # MIT License
 ```
 
-### 4.2 Frontend Configuration
+### 3.2 CI/CD
 ```
-frontend/
-├── package.json              # Dependencies & Scripts
-├── eslint.config.js          # Code Quality Rules
-└── vite.config.js            # Build Tool Settings
+.github/
+└── workflows/
+    └── deploy.yml            # GitHub Actions Deployment
 ```
 
-**Purpose**: Development environment setup and tooling
-
----
-
-## 5. Automation Layer
-
-### 5.1 Startup Scripts
+### 3.3 CLI / Scripts
 ```
 /
 ├── StartApplication.bat      # Launch Development Server
 └── InstallDependencies.bat   # Install Node.js Dependencies
 ```
-
-**Purpose**: One-click setup and execution
 
 ---
 
@@ -112,15 +104,16 @@ frontend/
 
 ### Mutually Exclusive (No Overlap)
 - ✅ Each file has a single, clear responsibility
-- ✅ No duplicate logic across modules
-- ✅ Statistical calculations isolated from UI rendering
+- ✅ Documentation separated from code
+- ✅ Specifications separated from user manuals
+- ✅ Local automation scripts separated from CI/CD workflows
 
 ### Collectively Exhaustive (Complete Coverage)
 - ✅ All UI functionality in `App.jsx`
 - ✅ All statistical logic in `utils/spc_logic.js`
-- ✅ All async processing in `spc.worker.js`
-- ✅ All documentation categorized by audience
+- ✅ All deployment logic in `.github/workflows/deploy.yml`
+- ✅ All documentation categorized by purpose (Spec, Manual, Reference)
 
 ---
 
-*Last Updated: 2026-01-05 | Version 5.0*
+*Last Updated: 2026-02-03 | Version 5.1*

@@ -336,8 +336,6 @@ function App() {
         <input
           type="file"
           multiple
-          webkitdirectory=""
-          directory=""
           accept=".xlsx"
           style={{ display: 'none' }}
           id="fileInput"
@@ -347,13 +345,13 @@ function App() {
           id="selectDataBtn"
           onClick={() => document.getElementById('fileInput').click()}
         >
-          Select Data Folder
+          Select Data Files
         </button>
 
         {/* Show message if no products are available */}
         {products.length === 0 && (
           <div style={{ padding: '1rem', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '1rem', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>Please select a data folder to load products</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>Please select data files to load products</p>
           </div>
         )}
 

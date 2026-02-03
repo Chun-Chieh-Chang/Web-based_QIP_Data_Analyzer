@@ -3,7 +3,7 @@
 > **A Standalone, Privacy-First Statistical Process Control Platform**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Architecture: MECE](https://img.shields.io/badge/Architecture-MECE-green.svg)](PROJECT_STRUCTURE.md)
+[![Architecture: MECE](https://img.shields.io/badge/Architecture-MECE-green.svg)](docs/specs/PROJECT_STRUCTURE.md)
 
 ---
 
@@ -35,7 +35,7 @@ The system is organized using **MECE principles** (Mutually Exclusive, Collectiv
 - **`Nelson Rules/`**: Standalone Excel VBA module
 - **`NormalDistributionPlot/`**: Offline distribution plotter
 
-📖 **Full Structure**: See [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md)
+📖 **Full Structure**: See [`PROJECT_STRUCTURE.md`](docs/specs/PROJECT_STRUCTURE.md)
 
 ---
 
@@ -110,8 +110,8 @@ Row 3+: [Batch ID]    | [Value]       | [Value]       | [Value]
 | Document                  | Purpose                          |
 |---------------------------|----------------------------------|
 | **README.md** (this file) | Quick start & overview           |
-| **SPC_Tool_User_Manual.md**| Detailed usage instructions     |
-| **PROJECT_STRUCTURE.md**  | MECE architecture explanation    |
+| **docs/manual/SPC_Tool_User_Manual.md**| Detailed usage instructions     |
+| **docs/specs/PROJECT_STRUCTURE.md**  | MECE architecture explanation    |
 | **CHANGELOG.md**          | Version history                  |
 | **frontend/README.md**    | Technical frontend details       |
 

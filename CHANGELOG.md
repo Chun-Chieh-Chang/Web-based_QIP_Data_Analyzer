@@ -1,5 +1,13 @@
 # Project Change Log
 
+## [v6.0] - 2026-02-03
+### Changed
+- **Architectural Cleanup**: Reorganized the project structure based on MECE principles.
+- **Documentation Migration**: Moved technical specifications and manuals to a dedicated `docs/` directory.
+- **Improved Hierarchy**: Separated reference materials (Excel VBA) from the main application logic.
+- **Automation**: Updated GitHub Actions configuration for streamlined deployment.
+- **Structure Update**: Modernized the root directory to focus on the web-based core while preserving legacy references in `docs/reference/`.
+
 ## [v5.5] - 2026-02-02
 ### Changed
 - **Excel Layout Update**: Redesigned Excel import and export logic to match the new industry standard layout.
