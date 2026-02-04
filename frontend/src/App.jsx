@@ -4,6 +4,7 @@ import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
 import GuidancePanel from './components/GuidancePanel';
 import DecisionWizard from './components/DecisionWizard';
+import AnalysisStageSelector from './components/AnalysisStageSelector';
 import { getStepGuidance, getChartModeGuidance } from './utils/guidance';
 
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator, Brain, Key, Send, Search, Info, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -41,6 +42,9 @@ function App() {
   // Decision Wizard States
   const [showDecisionWizard, setShowDecisionWizard] = useState(false);
   const [wizardRecommendation, setWizardRecommendation] = useState(null);
+
+  // Analysis Stage States
+  const [analysisStage, setAnalysisStage] = useState(null);
 
   // AI Analysis States
   const [apiKey, setApiKey] = useState(localStorage.getItem('spc_ai_api_key') || '');
@@ -703,6 +707,15 @@ function App() {
               關閉
             </button>
           </div>
+        )}
+
+        {/* Analysis Stage Selector */}
+        {selectedProduct && selectedItem && !data && (
+          <AnalysisStageSelector
+            sampleSize={cavityInfo?.total_cavities || 1}
+            onStageSelect={setAnalysisStage}
+            selectedStage={analysisStage}
+          />
         )}
 
         {!data && !loading && (
