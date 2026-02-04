@@ -363,3 +363,65 @@ Implemented a comprehensive user guidance system that provides contextual help a
 - Implement multi-language support
 - Add searchable help system
 
+
+
+---
+
+## [v6.4] - 2026-02-04
+### Phase 2 Completion: Full Guidance System & P Chart Planning
+
+#### Task Overview
+Completed Phase 2 by adding comprehensive guidance panels for Steps 3 and 4, and planning P Chart implementation.
+
+#### 1. Step 3 & Step 4 Guidance Panels
+- **Step 3 (Uniformity Analysis)**:
+  - ANOVA 檢驗說明
+  - P-value 解釋
+  - 應該注意什麼
+  - 應該怎麼做
+
+- **Step 4 (Capability Assessment)**:
+  - 製程能力等級說明
+  - Cpk vs Ppk 解釋
+  - 應該注意什麼
+  - 應該怎麼做
+
+#### 2. P Chart Guidance Content
+- **新增**: `pChartGuidance` 對象在 `guidance.js`
+- **內容**:
+  - 標題和描述
+  - 關鍵要點 (3 項)
+  - 應該注意什麼 (4 項)
+  - 應該怎麼做 (4 項)
+  - 結果解釋 (4 項)
+
+#### 3. P Chart Implementation Guide
+- **文件**: `P_CHART_IMPLEMENTATION_GUIDE.md`
+- **內容**:
+  - 數據結構說明
+  - 計算邏輯
+  - UI 實現計劃
+  - 指導內容
+  - 實現步驟
+  - 技術規格
+
+#### 4. Quality Metrics
+- ✅ 構建成功 (18.10s)
+- ✅ 代碼診斷通過
+- ✅ 無編譯錯誤
+- ✅ 全部 4 個步驟都有指導
+
+#### Files Modified
+- `frontend/src/App.jsx` (+24 lines for Steps 3 & 4 guidance)
+- `frontend/src/utils/guidance.js` (+50 lines for P Chart guidance)
+
+#### Files Created
+- `P_CHART_IMPLEMENTATION_GUIDE.md` (comprehensive guide)
+
+#### Next Steps
+- 實現 P Chart 計算邏輯
+- 添加 P Chart UI 組件
+- 實現 P Chart 圖表渲染
+- 添加 P Chart 指導面板
+- 測試和驗證
+
