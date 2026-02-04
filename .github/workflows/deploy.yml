@@ -38,9 +38,8 @@ jobs:
           cd frontend
           npm run build
         env:
-           # If using client-side routing, base might need adjustment, but standard vite mostly works
-           # Need to ensure vite base in vite.config.js is correct or default './'
            CI: true
+           GITHUB_PAGES: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
