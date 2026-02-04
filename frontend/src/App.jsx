@@ -405,7 +405,7 @@ function App() {
                   setApiKey(e.target.value);
                   localStorage.setItem('spc_ai_api_key', e.target.value);
                 }}
-                style={{ width: '100%', paddingLeft: '30px', fontSize: '0.8rem', borderRadius: '6px' }}
+                style={{ width: '100%', paddingLeft: '30px', paddingTop: '10px', paddingBottom: '10px', fontSize: '0.8rem', borderRadius: '6px', height: '40px' }}
               />
             </div>
             <select
