@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
+import GuidancePanel from './components/GuidancePanel';
+import { getStepGuidance, getChartModeGuidance } from './utils/guidance';
 
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator, Brain, Key, Send, Search, Info, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 // SPCAnalysis now runs in worker.js
@@ -629,6 +631,17 @@ function App() {
             {/* STEP 1: DATA VALIDATION */}
             {currentStep === 1 && (
               <div className="animate-in">
+                <GuidancePanel
+                  title={getStepGuidance(1).title}
+                  description={getStepGuidance(1).description}
+                  keyPoints={getStepGuidance(1).keyPoints}
+                  sections={{
+                    whatToLook: getStepGuidance(1).whatToLook,
+                    whatToDo: getStepGuidance(1).whatToDo
+                  }}
+                  tips="如果檢測到離群值，不要急著刪除。先確認是否為真實的製程異常，這些信息對改善製程很重要。"
+                />
+
                 <div className="info-box blue">
                   <Info size={24} />
                   <div>
@@ -671,6 +684,19 @@ function App() {
             {/* STEP 2: STABILITY (Control Charts) */}
             {currentStep === 2 && (
               <div className="animate-in">
+                <GuidancePanel
+                  title={getStepGuidance(2).title}
+                  description={getStepGuidance(2).description}
+                  keyPoints={getStepGuidance(2).keyPoints}
+                  sections={{
+                    chartModes: getStepGuidance(2).chartModes,
+                    nelsonRules: getStepGuidance(2).nelsonRules,
+                    whatToLook: getStepGuidance(2).whatToLook,
+                    whatToDo: getStepGuidance(2).whatToDo
+                  }}
+                  tips="紅色點表示違反 Nelson Rules 的批次。如果有多個紅色點，表示製程可能失控，需要調查原因。"
+                />
+
                 <div className="info-box amber">
                   <Activity size={24} />
                   <div>
