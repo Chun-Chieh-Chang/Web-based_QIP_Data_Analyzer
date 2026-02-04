@@ -2325,7 +2325,21 @@ function App() {
                   <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 'bold' }}>
                     <Calculator size={24} color="#6366f1" /> SPC 指標計算說明
                   </h3>
-                  <button onClick={() => setShowMetricsInfo(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>✕</button>
+                  <button
+                    onClick={() => setShowMetricsInfo(false)}
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      cursor: 'pointer',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      color: '#334155',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s'
+                    }}>
+                    關閉
+                  </button>
                 </div>
                 <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {/* Cpk */}
