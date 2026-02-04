@@ -776,34 +776,49 @@ export class SPCAnalysis {
     calculateXbarSChart(rawData, labels) {
         if (!rawData || rawData.length === 0) return null;
 
-        // A3, B3, B4 constants for X-bar/S chart (for n=2 to 10)
-        const A3_Map = { 2: 2.659, 3: 1.954, 4: 1.628, 5: 1.427, 6: 1.287, 7: 1.182, 8: 1.099, 9: 1.032, 10: 0.975 };
-        const B3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0.029, 7: 0.113, 8: 0.179, 9: 0.232, 10: 0.276 };
-        const B4_Map = { 2: 3.267, 3: 2.568, 4: 2.266, 5: 2.089, 6: 1.970, 7: 1.882, 8: 1.815, 9: 1.761, 10: 1.716 };
-        const c4_Map = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
+        // A3, B3, B4 constants for X-bar/S chart (Extended to n=25)
+        const A3_Map = { 2: 2.659, 3: 1.954, 4: 1.628, 5: 1.427, 6: 1.287, 7: 1.182, 8: 1.099, 9: 1.032, 10: 0.975, 11: 0.927, 12: 0.886, 13: 0.850, 14: 0.817, 15: 0.789, 16: 0.763, 17: 0.739, 18: 0.718, 19: 0.698, 20: 0.680, 21: 0.663, 22: 0.647, 23: 0.633, 24: 0.619, 25: 0.606 };
+        const B3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0.030, 7: 0.118, 8: 0.185, 9: 0.239, 10: 0.284, 11: 0.321, 12: 0.354, 13: 0.382, 14: 0.406, 15: 0.428, 16: 0.448, 17: 0.466, 18: 0.482, 19: 0.497, 20: 0.510, 21: 0.523, 22: 0.534, 23: 0.545, 24: 0.555, 25: 0.565 };
+        const B4_Map = { 2: 3.267, 3: 2.568, 4: 2.266, 5: 2.089, 6: 1.970, 7: 1.882, 8: 1.815, 9: 1.761, 10: 1.716, 11: 1.679, 12: 1.646, 13: 1.618, 14: 1.594, 15: 1.572, 16: 1.552, 17: 1.534, 18: 1.518, 19: 1.503, 20: 1.490, 21: 1.477, 22: 1.466, 23: 1.455, 24: 1.445, 25: 1.435 };
+        const c4_Map = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727, 11: 0.9754, 12: 0.9776, 13: 0.9794, 14: 0.9810, 15: 0.9823, 16: 0.9835, 17: 0.9845, 18: 0.9854, 19: 0.9862, 20: 0.9869, 21: 0.9876, 22: 0.9882, 23: 0.9887, 24: 0.9892, 25: 0.9896 };
 
         const n = rawData[0].length; // Number of cavities (subgroup size)
-        if (n < 2 || n > 10) return null; // Only support n=2 to 10
+        if (n < 2) return null;
 
         // Calculate X-bar (batch averages) and S (standard deviation) for each batch
         const xbars = [];
         const s_values = [];
 
         rawData.forEach(batch => {
-            const xbar = getMean(batch);
-            const s = getStdDev(batch, true); // Sample standard deviation
-            xbars.push(xbar);
-            s_values.push(s);
+            const rowData = batch.filter(v => v !== null && !isNaN(v));
+            if (rowData.length > 0) {
+                const xbar = getMean(rowData);
+                const s = getStdDev(rowData, true); // Sample standard deviation
+                xbars.push(xbar);
+                s_values.push(s);
+            }
         });
+
+        if (xbars.length === 0) return null;
 
         // Calculate overall X-bar and S-bar
         const xbar_overall = getMean(xbars);
         const s_bar = getMean(s_values);
 
-        // Calculate control limits
-        const A3 = A3_Map[n] || 1.427;
-        const B3 = B3_Map[n] || 0;
-        const B4 = B4_Map[n] || 2.089;
+        // Calculate control limits using map or approximation for large n
+        let A3, B3, B4;
+        if (n <= 25) {
+            A3 = A3_Map[n];
+            B3 = B3_Map[n];
+            B4 = B4_Map[n];
+        } else {
+            // For n > 25, use approximation formulas
+            const c4 = 1 - (1 / (4 * n));
+            A3 = 3 / (c4 * Math.sqrt(n));
+            const h = 3 / (c4 * Math.sqrt(2 * (n - 1)));
+            B3 = Math.max(0, 1 - h);
+            B4 = 1 + h;
+        }
 
         const ucl_xbar = xbar_overall + A3 * s_bar;
         const lcl_xbar = xbar_overall - A3 * s_bar;
