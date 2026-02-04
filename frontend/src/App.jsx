@@ -37,7 +37,7 @@ function App() {
 
   // AI Analysis States
   const [apiKey, setApiKey] = useState(localStorage.getItem('spc_ai_api_key') || '');
-  const [aiModel, setAiModel] = useState('gemini-1.5-flash');
+  const [aiModel, setAiModel] = useState('gemini-2.0-flash');
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiConfig, setShowAiConfig] = useState(false);
@@ -355,10 +355,16 @@ function App() {
       });
 
       const resData = await response.json();
-      if (resData.candidates && resData.candidates[0].content.parts[0].text) {
+      
+      // Better error handling
+      if (!response.ok) {
+        throw new Error(`API Error (${response.status}): ${resData.error?.message || JSON.stringify(resData)}`);
+      }
+      
+      if (resData.candidates && resData.candidates[0]?.content?.parts?.[0]?.text) {
         setAiAnalysis(resData.candidates[0].content.parts[0].text);
       } else {
-        throw new Error(resData.error?.message || 'AI 服務異常，請回查 API Key 或模型設定。');
+        throw new Error(`Unexpected response format: ${JSON.stringify(resData)}`);
       }
     } catch (err) {
       setError('AI 分析發生錯誤: ' + err.message);
@@ -407,8 +413,10 @@ function App() {
               onChange={(e) => setAiModel(e.target.value)}
               style={{ padding: '0.4rem', fontSize: '0.8rem', borderRadius: '6px' }}
             >
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (快)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (強)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (快速)</option>
+              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (輕量)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (舊版)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (舊版)</option>
             </select>
           </div>
         </div>
