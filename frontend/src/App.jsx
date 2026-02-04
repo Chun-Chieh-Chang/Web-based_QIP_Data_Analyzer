@@ -37,7 +37,7 @@ function App() {
 
   // AI Analysis States
   const [apiKey, setApiKey] = useState(localStorage.getItem('spc_ai_api_key') || '');
-  const [aiModel, setAiModel] = useState('gemini-2.0-flash');
+  const [aiModel, setAiModel] = useState('gemini-2.5-flash');
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiConfig, setShowAiConfig] = useState(false);
@@ -413,10 +413,9 @@ function App() {
               onChange={(e) => setAiModel(e.target.value)}
               style={{ padding: '0.4rem', fontSize: '0.8rem', borderRadius: '6px' }}
             >
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash (快速)</option>
-              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (輕量)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (舊版)</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro (舊版)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (推薦)</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (輕量)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (強大)</option>
             </select>
           </div>
         </div>
