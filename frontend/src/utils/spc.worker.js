@@ -53,6 +53,8 @@ self.onmessage = (e) => {
                         result = await spcEngine.analyzeCavity(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
                     } else if (analysisType === 'group') {
                         result = await spcEngine.analyzeGroup(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
+                    } else if (analysisType === 'p-chart') {
+                        result = await spcEngine.analyzePChart(cachedWorkbook, selectedItem, startBatch, endBatch, excludedBatches);
                     }
 
                     if (result.error) throw new Error(result.error);

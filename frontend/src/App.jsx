@@ -146,6 +146,8 @@ function App() {
         cavityHeaders = ["Mean", "Cpk"];
       } else if (analysisType === 'group' && data.groups) {
         cavityHeaders = ["Min", "Max", "Avg"];
+      } else if (analysisType === 'p-chart' && data.pChart) {
+        cavityHeaders = ["Sample Size", "Defective Count", "Defect Rate"];
       }
 
       const header = ["Target", "USL", "LSL", "生產批號", ...cavityHeaders];
@@ -175,6 +177,11 @@ function App() {
         dataRows = data.groups.map(g => ({
           batch: g.batch,
           values: [g.min, g.max, g.avg]
+        }));
+      } else if (analysisType === 'p-chart' && data.pChart) {
+        dataRows = data.pChart.labels.map((label, i) => ({
+          batch: label,
+          values: [data.pChart.sampleSize[i], data.pChart.defectiveCount[i], data.pChart.proportions[i]]
         }));
       }
 
@@ -514,6 +521,7 @@ function App() {
               <option value="batch">Batch Analysis (I-MR)</option>
               <option value="cavity">Cavity Comparison</option>
               <option value="group">Group Trend (Min-Max-Avg)</option>
+              <option value="p-chart">P Chart (不良率監測)</option>
             </select>
           </div>
         )}
@@ -2036,6 +2044,196 @@ function App() {
             </div>
           )
         }
+
+        {/* P CHART ANALYSIS */}
+        {data && analysisType === 'p-chart' && data.pChart && (
+          <div className="animate-in">
+            <GuidancePanel
+              title="P Chart (不良率監測)"
+              description="監測製程的不良品率趨勢，適用於品質管理和缺陷分析。"
+              keyPoints={[
+                '適用於二元分類 (良/不良)',
+                '樣本數可以不同，但應該足夠大 (n ≥ 30)',
+                '不良率應該穩定在低水平'
+              ]}
+              sections={{
+                whatToLook: {
+                  title: '應該注意什麼?',
+                  items: [
+                    '紅色點 - 超出控制界限的批次',
+                    '趨勢 - 不良率是否上升或下降',
+                    '變異 - 不良率的波動程度',
+                    '異常批次 - 調查超出界限的原因'
+                  ]
+                },
+                whatToDo: {
+                  title: '應該怎麼做?',
+                  items: [
+                    '如果不良率穩定: 繼續監測，保持現有措施',
+                    '如果不良率上升: 立即調查原因，實施改善',
+                    '如果不良率下降: 確認改善措施的有效性，標準化做法',
+                    '定期檢查，建立控制圖持續監測'
+                  ]
+                }
+              }}
+              tips="紅色點表示超出控制界限的批次。如果有多個紅色點，表示不良率可能失控，需要調查原因。"
+            />
+
+            <div className="card" style={{ padding: '0' }}>
+              <div style={{ padding: '32px 32px 0 32px' }}>
+                <h2 style={{ marginBottom: '8px' }}>P Chart (不良率控制圖)</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>監測製程不良品率的變化趨勢</p>
+              </div>
+              <div className="charts-container" style={{ padding: '20px' }}>
+                <Plot
+                  data={[
+                    {
+                      x: data.pChart.labels,
+                      y: data.pChart.proportions,
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      name: 'Defect Rate',
+                      text: data.pChart.labels,
+                      customdata: data.pChart.proportions.map((p, i) => [
+                        (p * 100).toFixed(2),
+                        (data.pChart.ucl_p[i] * 100).toFixed(2),
+                        (data.pChart.lcl_p[i] * 100).toFixed(2)
+                      ]),
+                      hovertemplate: '<b>Batch: %{text}</b><br>Defect Rate: %{customdata[0]}%<br>UCL: %{customdata[1]}%<br>LCL: %{customdata[2]}%<extra></extra>',
+                      line: { color: '#2563eb', width: 2 },
+                      marker: {
+                        size: 8,
+                        color: data.pChart.proportions.map((p, i) => 
+                          p > data.pChart.ucl_p[i] || p < data.pChart.lcl_p[i] ? '#ef4444' : '#2563eb'
+                        ),
+                        line: { color: '#fff', width: 1.5 }
+                      }
+                    },
+                    {
+                      x: data.pChart.labels,
+                      y: Array(data.pChart.labels.length).fill(data.pChart.p_bar),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'p-bar (Center)',
+                      line: { color: '#10b981', width: 2, dash: 'solid' },
+                      hoverinfo: 'skip'
+                    },
+                    {
+                      x: data.pChart.labels,
+                      y: data.pChart.ucl_p,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'UCL',
+                      line: { color: '#ef4444', width: 1.5, dash: 'dash' },
+                      hoverinfo: 'skip'
+                    },
+                    {
+                      x: data.pChart.labels,
+                      y: data.pChart.lcl_p,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'LCL',
+                      line: { color: '#ef4444', width: 1.5, dash: 'dash' },
+                      hoverinfo: 'skip'
+                    }
+                  ]}
+                  layout={{
+                    title: {
+                      text: `<b>P Chart: ${selectedProduct}</b><br><span style="font-size: 13px; color: #64748b;">${selectedItem} (Defect Rate Monitoring)</span>`,
+                      font: { family: 'Inter', size: 16 },
+                      x: 0.05,
+                      xanchor: 'left',
+                      y: 0.92
+                    },
+                    height: 500,
+                    margin: { t: 90, b: 70, l: 60, r: 30 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { family: 'Inter', size: 11 },
+                    xaxis: {
+                      tickangle: 45,
+                      gridcolor: '#f1f5f9',
+                      zeroline: false,
+                      automargin: true,
+                      title: 'Production Batches'
+                    },
+                    yaxis: {
+                      gridcolor: '#f1f5f9',
+                      zeroline: false,
+                      automargin: true,
+                      title: 'Defect Rate (Proportion)',
+                      tickformat: '.2%'
+                    },
+                    showlegend: true,
+                    legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.25 },
+                    hovermode: 'closest'
+                  }}
+                  config={{ responsive: true, displaylogo: false }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* P Chart Statistics */}
+              <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '12px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>平均不良率 (p-bar)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{(data.pChart.p_bar * 100).toFixed(2)}%</div>
+                </div>
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '12px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>最小不良率 (Min)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2563eb' }}>{(data.stats.min * 100).toFixed(2)}%</div>
+                </div>
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '12px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>最大不良率 (Max)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>{(data.stats.max * 100).toFixed(2)}%</div>
+                </div>
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '12px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>監測批次數 (Count)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0f172a' }}>{data.stats.count}</div>
+                </div>
+              </div>
+
+              {/* Violations */}
+              {data.violations && data.violations.length > 0 && (
+                <div style={{ padding: '20px', borderTop: '1px solid #e2e8f0' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <AlertCircle size={20} /> 超出控制界限的批次 ({data.violations.length})
+                  </h3>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {data.violations.map((v, i) => (
+                      <div key={i} style={{ padding: '10px', backgroundColor: '#fff1f0', border: '1px solid #ffa39e', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <div style={{ fontWeight: 'bold', color: '#cf1322' }}>批次 {v.batch}</div>
+                        <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px' }}>
+                          不良率: {(v.proportion * 100).toFixed(2)}% | 
+                          UCL: {(v.ucl * 100).toFixed(2)}% | 
+                          LCL: {(v.lcl * 100).toFixed(2)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* P Chart Interpretation */}
+            <div className="card" style={{
+              backgroundColor: '#f0f9ff',
+              borderLeft: '4px solid #0284c7',
+              borderRadius: '4px',
+              padding: '1.5rem'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7' }}>
+                <Info size={18} /> P Chart 結果解釋 (Interpretation)
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.95rem', lineHeight: '1.8', color: '#333' }}>
+                <li><strong>p-bar (平均不良率)</strong>: 所有批次的平均不良率，代表製程的典型表現。</li>
+                <li><strong>UCL/LCL (控制界限)</strong>: 基於統計計算的上下界限。超出界限表示製程失控。</li>
+                <li><strong>紅色點</strong>: 表示該批次的不良率超出控制界限，需要調查原因。</li>
+                <li><strong>趨勢分析</strong>: 觀察不良率是否有上升或下降的趨勢，判斷製程改善效果。</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </main >
     </div >
   );

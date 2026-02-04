@@ -868,4 +868,84 @@ export class SPCAnalysis {
             labels
         };
     }
+
+    // P Chart Analysis from Excel
+    async analyzePChart(workbook, sheetName, startBatch = null, endBatch = null, skipIndices = []) {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet || !sheet['!ref']) return { error: "Sheet not found" };
+
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+        const specs = this.getSpecs(sheet);
+
+        // Read batch labels (Row 1)
+        let labels = [];
+        for (let c = 1; c <= range.e.c; c++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: 0, c })];
+            labels.push(cell ? String(cell.v || "") : `Batch ${c}`);
+        }
+
+        // Read sample sizes (Row 2)
+        let sampleSizes = [];
+        for (let c = 1; c <= range.e.c; c++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: 1, c })];
+            sampleSizes.push(cell ? Number(cell.v) : 0);
+        }
+
+        // Read defective counts (Row 3)
+        let defectiveCounts = [];
+        for (let c = 1; c <= range.e.c; c++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: 2, c })];
+            defectiveCounts.push(cell ? Number(cell.v) : 0);
+        }
+
+        // Filter by batch range
+        if (startBatch !== null && endBatch !== null) {
+            const startIdx = Number(startBatch);
+            const endIdx = Number(endBatch);
+            labels = labels.slice(startIdx, endIdx + 1);
+            sampleSizes = sampleSizes.slice(startIdx, endIdx + 1);
+            defectiveCounts = defectiveCounts.slice(startIdx, endIdx + 1);
+        }
+
+        // Remove skipped batches
+        labels = labels.filter((_, i) => !skipIndices.includes(i));
+        sampleSizes = sampleSizes.filter((_, i) => !skipIndices.includes(i));
+        defectiveCounts = defectiveCounts.filter((_, i) => !skipIndices.includes(i));
+
+        // Calculate P Chart
+        const pChartData = this.calculatePChart(defectiveCounts, sampleSizes, labels);
+
+        // Detect violations (points outside control limits)
+        const violations = [];
+        pChartData.proportions.forEach((p, i) => {
+            if (p > pChartData.ucl_p[i] || p < pChartData.lcl_p[i]) {
+                violations.push({
+                    index: i,
+                    batch: labels[i],
+                    proportion: p,
+                    ucl: pChartData.ucl_p[i],
+                    lcl: pChartData.lcl_p[i],
+                    message: `Batch ${labels[i]}: Defect rate ${(p * 100).toFixed(2)}% is out of control limits`
+                });
+            }
+        });
+
+        return {
+            pChart: pChartData,
+            violations,
+            stats: {
+                mean: pChartData.p_bar,
+                min: Math.min(...pChartData.proportions),
+                max: Math.max(...pChartData.proportions),
+                count: pChartData.proportions.length
+            },
+            specs: {
+                target: specs.target,
+                usl: specs.usl,
+                lsl: specs.lsl,
+                decimals: specs.precision > 0 ? specs.precision : 4,
+                metadata: specs.metadata
+            }
+        };
+    }
 }
