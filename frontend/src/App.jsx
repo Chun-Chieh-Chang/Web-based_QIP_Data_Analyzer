@@ -682,9 +682,10 @@ function App() {
                   <div className="charts-container" style={{ padding: '20px' }}>
                     {data.data.z_stats && (
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-                        <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '6px', padding: '4px' }}>
+                        <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '6px', padding: '4px', gap: '4px' }}>
                           <button
                             onClick={() => setChartMode('standard')}
+                            title="標準圖表：顯示原始數據值與控制界限，用於監測製程中心和變異"
                             style={{
                               padding: '6px 12px',
                               borderRadius: '4px',
@@ -694,13 +695,15 @@ function App() {
                               color: chartMode === 'standard' ? '#0f172a' : '#64748b',
                               boxShadow: chartMode === 'standard' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                               border: 'none',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
                             }}
                           >
                             標準 (Standard)
                           </button>
                           <button
                             onClick={() => setChartMode('z-chart')}
+                            title="Z-Chart（標準化圖表）：將數據標準化為Z分數，便於比較不同量綱的製程數據"
                             style={{
                               padding: '6px 12px',
                               borderRadius: '4px',
@@ -710,7 +713,8 @@ function App() {
                               color: chartMode === 'z-chart' ? '#0f172a' : '#64748b',
                               boxShadow: chartMode === 'z-chart' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                               border: 'none',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
                             }}
                           >
                             Z-Chart (標準化)
