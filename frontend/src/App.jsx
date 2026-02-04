@@ -5,6 +5,7 @@ import { generateExpertDiagnostic } from './utils/diagnostic_logic';
 import GuidancePanel from './components/GuidancePanel';
 import DecisionWizard from './components/DecisionWizard';
 import AnalysisStageSelector from './components/AnalysisStageSelector';
+import ControlChartSelectionWizard from './components/ControlChartSelectionWizard';
 import { getStepGuidance, getChartModeGuidance } from './utils/guidance';
 
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator, Brain, Key, Send, Search, Info, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -45,6 +46,10 @@ function App() {
 
   // Analysis Stage States
   const [analysisStage, setAnalysisStage] = useState(null);
+
+  // Control Chart Selection Wizard States
+  const [showChartSelectionWizard, setShowChartSelectionWizard] = useState(false);
+  const [chartSelectionRecommendation, setChartSelectionRecommendation] = useState(null);
 
   // AI Analysis States
   const [apiKey, setApiKey] = useState(localStorage.getItem('spc_ai_api_key') || '');
@@ -337,6 +342,15 @@ function App() {
     setShowDecisionWizard(false);
   };
 
+  const handleChartSelectionRecommendation = (recommendation) => {
+    setChartSelectionRecommendation(recommendation);
+    setShowChartSelectionWizard(false);
+  };
+
+  const handleChartSelectionSkip = () => {
+    setShowChartSelectionWizard(false);
+  };
+
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
     setLoading(true);
@@ -590,23 +604,42 @@ function App() {
         </button>
 
         {selectedProduct && selectedItem && !data && (
-          <button
-            onClick={() => setShowDecisionWizard(true)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              marginTop: '8px',
-              backgroundColor: '#f0f9ff',
-              color: '#0284c7',
-              border: '2px solid #0284c7',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '0.9rem'
-            }}
-          >
-            🧭 開啟智能決策嚮導
-          </button>
+          <>
+            <button
+              onClick={() => setShowDecisionWizard(true)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginTop: '8px',
+                backgroundColor: '#f0f9ff',
+                color: '#0284c7',
+                border: '2px solid #0284c7',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}
+            >
+              🧭 開啟智能決策嚮導
+            </button>
+            <button
+              onClick={() => setShowChartSelectionWizard(true)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginTop: '8px',
+                backgroundColor: '#f0fdf4',
+                color: '#16a34a',
+                border: '2px solid #16a34a',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}
+            >
+              📈 AIAG-VDA 管制圖選擇
+            </button>
+          </>
         )}
 
         {data && (
@@ -665,6 +698,14 @@ function App() {
           />
         )}
 
+        {/* Control Chart Selection Wizard */}
+        {selectedProduct && selectedItem && !data && showChartSelectionWizard && (
+          <ControlChartSelectionWizard
+            onRecommendation={handleChartSelectionRecommendation}
+            onSkip={handleChartSelectionSkip}
+          />
+        )}
+
         {/* Wizard Recommendation Summary */}
         {wizardRecommendation && !showDecisionWizard && (
           <div style={{
@@ -698,6 +739,48 @@ function App() {
                 padding: '6px 12px',
                 backgroundColor: '#e0f2fe',
                 color: '#0284c7',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              關閉
+            </button>
+          </div>
+        )}
+
+        {/* Chart Selection Recommendation Summary */}
+        {chartSelectionRecommendation && !showChartSelectionWizard && (
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '2px solid #16a34a',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#16a34a', marginBottom: '4px' }}>
+                ✓ AIAG-VDA 管制圖推薦
+              </div>
+              <div style={{ color: '#166534', fontSize: '0.9rem' }}>
+                推薦圖表: <strong>{chartSelectionRecommendation.recommendation.primaryChart}</strong>
+              </div>
+              {chartSelectionRecommendation.recommendation.secondaryCharts.length > 0 && (
+                <div style={{ marginTop: '4px', color: '#166534', fontSize: '0.85rem' }}>
+                  備選: {chartSelectionRecommendation.recommendation.secondaryCharts.join(', ')}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setChartSelectionRecommendation(null)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#dcfce7',
+                color: '#16a34a',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
