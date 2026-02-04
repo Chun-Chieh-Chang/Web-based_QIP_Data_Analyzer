@@ -268,3 +268,41 @@ export const getChartModeGuidance = (mode) => {
   };
   return modeMap[mode] || null;
 };
+
+// P Chart Guidance
+export const pChartGuidance = {
+  title: 'P Chart (不良率監測)',
+  description: '監測製程的不良品率趨勢，適用於品質管理和缺陷分析。',
+  keyPoints: [
+    '適用於二元分類 (良/不良)',
+    '樣本數可以不同，但應該足夠大 (n ≥ 30)',
+    '不良率應該穩定在低水平'
+  ],
+  whatToLook: {
+    title: '應該注意什麼?',
+    items: [
+      '紅色點 - 超出控制界限的批次',
+      '趨勢 - 不良率是否上升或下降',
+      '變異 - 不良率的波動程度',
+      '異常批次 - 調查超出界限的原因'
+    ]
+  },
+  whatToDo: {
+    title: '應該怎麼做?',
+    items: [
+      '如果不良率穩定: 繼續監測，保持現有措施',
+      '如果不良率上升: 立即調查原因，實施改善',
+      '如果不良率下降: 確認改善措施的有效性，標準化做法',
+      '定期檢查，建立控制圖持續監測'
+    ]
+  },
+  interpretation: {
+    title: '結果解釋',
+    items: [
+      'p-bar: 平均不良率，所有批次的不良率平均值',
+      'UCL: 上控制界限，超過此值表示製程失控',
+      'LCL: 下控制界限，低於此值表示製程異常改善',
+      '紅色點: 違反控制規則的批次'
+    ]
+  }
+};
