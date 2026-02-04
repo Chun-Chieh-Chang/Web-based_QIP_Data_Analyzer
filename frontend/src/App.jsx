@@ -1428,6 +1428,18 @@ function App() {
             {/* STEP 3: UNIFORMITY (Box Plots) */}
             {currentStep === 3 && (
               <div className="animate-in">
+                <GuidancePanel
+                  title={getStepGuidance(3).title}
+                  description={getStepGuidance(3).description}
+                  keyPoints={getStepGuidance(3).keyPoints}
+                  sections={{
+                    uniformityCheck: getStepGuidance(3).uniformityCheck,
+                    whatToLook: getStepGuidance(3).whatToLook,
+                    whatToDo: getStepGuidance(3).whatToDo
+                  }}
+                  tips="ANOVA 檢驗結果很重要。如果 P-value < 0.05，表示各穴有顯著差異，應該分別計算各穴的 Cpk，而不是合併計算。"
+                />
+
                 <div className="info-box green">
                   <Layers size={24} />
                   <div>
@@ -1535,6 +1547,18 @@ function App() {
             {/* STEP 4: CAPABILITY (Report) */}
             {currentStep === 4 && (
               <div className="animate-in">
+                <GuidancePanel
+                  title={getStepGuidance(4).title}
+                  description={getStepGuidance(4).description}
+                  keyPoints={getStepGuidance(4).keyPoints}
+                  sections={{
+                    capabilityLevels: getStepGuidance(4).capabilityLevels,
+                    whatToLook: getStepGuidance(4).whatToLook,
+                    whatToDo: getStepGuidance(4).whatToDo
+                  }}
+                  tips="Cpk 和 Ppk 的差異很重要。如果差異大於 0.2，表示製程不夠穩定，需要改善。不要只看 Cpk 值，還要看製程是否受控。"
+                />
+
                 <div className="info-box blue">
                   <TrendingUp size={24} />
                   <div>
