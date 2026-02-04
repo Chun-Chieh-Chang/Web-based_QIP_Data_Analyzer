@@ -684,6 +684,7 @@ function App() {
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
                         <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '6px', padding: '4px', gap: '4px' }}>
                           <button
+                            className="chart-mode"
                             onClick={() => setChartMode('standard')}
                             title="標準圖表：顯示原始數據值與控制界限，用於監測製程中心和變異"
                             style={{
@@ -702,6 +703,7 @@ function App() {
                             標準 (Standard)
                           </button>
                           <button
+                            className="chart-mode"
                             onClick={() => setChartMode('z-chart')}
                             title="Z-Chart（標準化圖表）：將數據標準化為Z分數，便於比較不同量綱的製程數據"
                             style={{

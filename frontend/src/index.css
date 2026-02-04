@@ -135,6 +135,15 @@ button:not(.secondary):hover {
   transform: translateY(-2px);
 }
 
+/* Chart mode buttons - override with inline styles */
+button.chart-mode {
+  background: none !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
 button:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
