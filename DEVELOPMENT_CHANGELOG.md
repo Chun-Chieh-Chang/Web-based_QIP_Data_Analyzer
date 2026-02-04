@@ -196,3 +196,58 @@ Introduced background processing and optimized memory management.
 **Last Updated**: 2026-02-04  
 **Maintained By**: Kiro AI Assistant  
 **Total Versions**: 7 major releases
+
+
+---
+
+## [v6.2] - 2026-02-04
+### Advanced Control Chart Implementation: X-bar/S Chart
+
+#### Task Overview
+Implemented X-bar/S (X-bar/Sigma) control chart for enhanced multi-cavity analysis capabilities.
+
+#### 1. X-bar/S Chart Calculation (`frontend/src/utils/spc_logic.js`)
+- **Logic**: Monitors batch averages (X-bar) and standard deviations (S) simultaneously
+- **Constants**: A3, B3, B4 constants for n=2 to 10 (multi-cavity support)
+- **Calculation**:
+  - X-bar = Average of each batch
+  - S = Standard deviation of each batch
+  - UCL_X = X-bar_overall + A3 × S-bar
+  - LCL_X = X-bar_overall - A3 × S-bar
+  - UCL_S = B4 × S-bar
+  - LCL_S = B3 × S-bar
+
+#### 2. UI Enhancement (`frontend/src/App.jsx`)
+- **New Chart Mode**: Added "X-bar/S 圖" button to chart mode selector
+- **Chart Rendering**: Implemented X-bar/S chart visualization with Plotly
+- **Chart Title**: Updated to display "X-bar/S 圖 (批次平均與標準差) [ISO 7870-2]"
+- **Tooltip**: Added descriptive tooltip for X-bar/S chart mode
+
+#### 3. Data Integration
+- **Return Structure**: Added `xbar_s_chart` object to analysis results
+- **Compatibility**: Maintains backward compatibility with existing chart modes
+- **Conditional Rendering**: X-bar/S chart only displays for batch analysis with multi-cavity data
+
+#### 4. Features
+- ✅ Monitors process center (X-bar) and variation (S) simultaneously
+- ✅ Supports multi-cavity molds (n=2 to 10)
+- ✅ ISO 7870-2 compliant
+- ✅ Interactive chart with hover tooltips
+- ✅ Seamless integration with existing analysis workflow
+
+#### Files Modified
+- `frontend/src/utils/spc_logic.js`: Added `calculateXbarSChart()` method
+- `frontend/src/App.jsx`: Added X-bar/S chart UI and rendering logic
+- `CONTROL_CHART_EVALUATION.md`: Created comprehensive evaluation report
+
+#### Testing
+- ✅ Build successful (no errors)
+- ✅ Code diagnostics passed
+- ✅ Chart rendering verified
+- ✅ Data integration confirmed
+
+#### Next Steps
+- Implement P Chart (Proportion Defective) for quality monitoring
+- Implement C Chart (Count of Defects) for defect analysis
+- Implement EWMA Chart for trend detection
+
