@@ -728,13 +728,47 @@ function App() {
                           >
                             Z-Chart (標準化)
                           </button>
+                          <button
+                            className="chart-mode"
+                            onClick={() => setChartMode('xbar-s')}
+                            title="X-bar/S 圖：監測批次平均值與標準差，適合多穴模具分析"
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              fontWeight: '500',
+                              backgroundColor: chartMode === 'xbar-s' ? '#fff' : '#f1f5f9',
+                              color: '#0f172a',
+                              boxShadow: chartMode === 'xbar-s' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            X-bar/S 圖
+                          </button>
                         </div>
                       </div>
                     )}
 
                     <div style={{ marginBottom: '40px' }}>
                       <Plot
-                        data={chartMode === 'z-chart' && data.data.z_stats ? [
+                        data={chartMode === 'xbar-s' && data.xbar_s_chart ? [
+                          {
+                            x: data.xbar_s_chart.labels.map((_, i) => i),
+                            y: data.xbar_s_chart.xbars,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'X-bar (批次平均)',
+                            text: data.xbar_s_chart.labels,
+                            hovertemplate: '<b>批號: %{text}</b><br>X-bar: %{y:.4f}<extra></extra>',
+                            line: { color: '#3b82f6', width: 2.5 },
+                            marker: { color: '#3b82f6', size: 8, line: { color: '#fff', width: 1.5 } }
+                          },
+                          { x: data.xbar_s_chart.labels.map((_, i) => i), y: Array(data.xbar_s_chart.xbars.length).fill(data.xbar_s_chart.ucl_xbar), type: 'scatter', mode: 'lines', name: 'UCL (X-bar)', line: { color: '#ef4444', width: 1.5, dash: 'dash' } },
+                          { x: data.xbar_s_chart.labels.map((_, i) => i), y: Array(data.xbar_s_chart.xbars.length).fill(data.xbar_s_chart.xbar_overall), type: 'scatter', mode: 'lines', name: 'CL (X-bar)', line: { color: '#10b981', width: 1.5 } },
+                          { x: data.xbar_s_chart.labels.map((_, i) => i), y: Array(data.xbar_s_chart.xbars.length).fill(data.xbar_s_chart.lcl_xbar), type: 'scatter', mode: 'lines', name: 'LCL (X-bar)', line: { color: '#ef4444', width: 1.5, dash: 'dash' } }
+                        ] : chartMode === 'z-chart' && data.data.z_stats ? [
                           {
                             x: data.data.z_stats.labels.map((_, i) => i),
                             y: data.data.z_stats.values,
@@ -812,7 +846,9 @@ function App() {
                         layout={{
                           title: {
                             text: `<b>${selectedProduct}</b><br><span style="font-size: 14px; color: #64748b;">${selectedItem
-                              } - ${chartMode === 'z-chart'
+                              } - ${chartMode === 'xbar-s'
+                                ? "X-bar/S 圖 (批次平均與標準差) [ISO 7870-2]"
+                                : chartMode === 'z-chart'
                                 ? "Standardized Z-Chart (Short Run)"
                                 : (data.data.cavity_actual_name === "Average of All Cavities" ? "X-bar (均值) [ISO 7870-2]" : "Individual-X (單值) [ISO 7870-2]")
                               }</span>`,
@@ -822,9 +858,9 @@ function App() {
                             y: 0.95
                           },
                           shapes: (() => {
-                            const cl = chartMode === 'z-chart' ? data.data.z_stats.cl : (data.control_limits.cl_xbar || data.control_limits.cl_x);
-                            const ucl = chartMode === 'z-chart' ? data.data.z_stats.ucl : (data.control_limits.ucl_xbar || data.control_limits.ucl_x);
-                            const lcl = chartMode === 'z-chart' ? data.data.z_stats.lcl : (data.control_limits.lcl_xbar || data.control_limits.lcl_x);
+                            const cl = chartMode === 'xbar-s' ? data.xbar_s_chart.xbar_overall : (chartMode === 'z-chart' ? data.data.z_stats.cl : (data.control_limits.cl_xbar || data.control_limits.cl_x));
+                            const ucl = chartMode === 'xbar-s' ? data.xbar_s_chart.ucl_xbar : (chartMode === 'z-chart' ? data.data.z_stats.ucl : (data.control_limits.ucl_xbar || data.control_limits.ucl_x));
+                            const lcl = chartMode === 'xbar-s' ? data.xbar_s_chart.lcl_xbar : (chartMode === 'z-chart' ? data.data.z_stats.lcl : (data.control_limits.lcl_xbar || data.control_limits.lcl_x));
                             const s = (ucl - cl) / 3;
                             if (isNaN(s) || s <= 0) return [];
 

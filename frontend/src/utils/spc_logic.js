@@ -573,7 +573,8 @@ export class SPCAnalysis {
             distribution: {
                 histogram: { bin_centers, counts },
                 curve: { x: curve_x, within: curve_within, overall: curve_overall }
-            }
+            },
+            xbar_s_chart: isXbar ? this.calculateXbarSChart(rawData, labels) : null
         };
     }
 
@@ -769,5 +770,102 @@ export class SPCAnalysis {
             }
         }
         return { groups: groups, specs: { ...specs, decimals: specs.precision > 0 ? specs.precision : dataMaxPrecision, metadata: specs.metadata }, cavity_names: cavityIndices.map(C => String(sheet[XLSX.utils.encode_cell({ r: 0, c: C })]?.v || "")) };
+    }
+
+    // X-bar/S Chart Calculation
+    calculateXbarSChart(rawData, labels) {
+        if (!rawData || rawData.length === 0) return null;
+
+        // A3, B3, B4 constants for X-bar/S chart (for n=2 to 10)
+        const A3_Map = { 2: 2.659, 3: 1.954, 4: 1.628, 5: 1.427, 6: 1.287, 7: 1.182, 8: 1.099, 9: 1.032, 10: 0.975 };
+        const B3_Map = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0.029, 7: 0.113, 8: 0.179, 9: 0.232, 10: 0.276 };
+        const B4_Map = { 2: 3.267, 3: 2.568, 4: 2.266, 5: 2.089, 6: 1.970, 7: 1.882, 8: 1.815, 9: 1.761, 10: 1.716 };
+        const c4_Map = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
+
+        const n = rawData[0].length; // Number of cavities (subgroup size)
+        if (n < 2 || n > 10) return null; // Only support n=2 to 10
+
+        // Calculate X-bar (batch averages) and S (standard deviation) for each batch
+        const xbars = [];
+        const s_values = [];
+
+        rawData.forEach(batch => {
+            const xbar = getMean(batch);
+            const s = getStdDev(batch, true); // Sample standard deviation
+            xbars.push(xbar);
+            s_values.push(s);
+        });
+
+        // Calculate overall X-bar and S-bar
+        const xbar_overall = getMean(xbars);
+        const s_bar = getMean(s_values);
+
+        // Calculate control limits
+        const A3 = A3_Map[n] || 1.427;
+        const B3 = B3_Map[n] || 0;
+        const B4 = B4_Map[n] || 2.089;
+
+        const ucl_xbar = xbar_overall + A3 * s_bar;
+        const lcl_xbar = xbar_overall - A3 * s_bar;
+        const ucl_s = B4 * s_bar;
+        const lcl_s = B3 * s_bar;
+
+        return {
+            xbars,
+            s_values,
+            xbar_overall,
+            s_bar,
+            ucl_xbar,
+            lcl_xbar,
+            ucl_s,
+            lcl_s,
+            labels
+        };
+    }
+
+    // P Chart Calculation (Proportion Defective)
+    calculatePChart(defectiveCount, sampleSize, labels) {
+        if (!defectiveCount || defectiveCount.length === 0) return null;
+
+        // Calculate proportions
+        const proportions = defectiveCount.map((d, i) => d / sampleSize[i]);
+        const p_bar = getMean(proportions);
+
+        // Calculate control limits
+        const ucl_p = [];
+        const lcl_p = [];
+
+        proportions.forEach((p, i) => {
+            const se = Math.sqrt(p_bar * (1 - p_bar) / sampleSize[i]);
+            ucl_p.push(Math.min(1, p_bar + 3 * se));
+            lcl_p.push(Math.max(0, p_bar - 3 * se));
+        });
+
+        return {
+            proportions,
+            p_bar,
+            ucl_p,
+            lcl_p,
+            labels,
+            defectiveCount,
+            sampleSize
+        };
+    }
+
+    // C Chart Calculation (Count of Defects)
+    calculateCChart(defectCount, labels) {
+        if (!defectCount || defectCount.length === 0) return null;
+
+        const c_bar = getMean(defectCount);
+        const ucl_c = c_bar + 3 * Math.sqrt(c_bar);
+        const lcl_c = Math.max(0, c_bar - 3 * Math.sqrt(c_bar));
+
+        return {
+            defectCount,
+            c_bar,
+            ucl_c,
+            lcl_c,
+            labels
+        };
     }
 }
