@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import Plot from 'react-plotly.js';
 import { generateExpertDiagnostic } from './utils/diagnostic_logic';
 import GuidancePanel from './components/GuidancePanel';
+import DecisionWizard from './components/DecisionWizard';
 import { getStepGuidance, getChartModeGuidance } from './utils/guidance';
 
 import { Settings, FileText, Activity, Layers, BarChart3, AlertCircle, CheckCircle2, TrendingUp, ShieldCheck, Calculator, Brain, Key, Send, Search, Info, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,6 +37,10 @@ function App() {
   // Cavity Information
   const [cavityInfo, setCavityInfo] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: Data Val, 2: Stability, 3: Uniformity, 4: Capability
+
+  // Decision Wizard States
+  const [showDecisionWizard, setShowDecisionWizard] = useState(false);
+  const [wizardRecommendation, setWizardRecommendation] = useState(null);
 
   // AI Analysis States
   const [apiKey, setApiKey] = useState(localStorage.getItem('spc_ai_api_key') || '');
@@ -303,6 +308,31 @@ function App() {
 
 
 
+  const handleWizardRecommendation = (recommendation) => {
+    setWizardRecommendation(recommendation);
+    setShowDecisionWizard(false);
+    
+    // Auto-select the recommended chart type
+    if (recommendation.recommendation.primaryChart) {
+      const chartMap = {
+        'I-MR': 'batch',
+        'X-bar/R': 'batch',
+        'X-bar/S': 'batch',
+        'P Chart': 'p-chart',
+        'C Chart': 'c-chart'
+      };
+      
+      const recommendedType = chartMap[recommendation.recommendation.primaryChart];
+      if (recommendedType) {
+        setAnalysisType(recommendedType);
+      }
+    }
+  };
+
+  const handleWizardSkip = () => {
+    setShowDecisionWizard(false);
+  };
+
   const handleRunAnalysis = async () => {
     if (!selectedProduct || !selectedItem) return;
     setLoading(true);
@@ -555,6 +585,26 @@ function App() {
           {loading ? 'Processing...' : 'Generate Analysis'}
         </button>
 
+        {selectedProduct && selectedItem && !data && (
+          <button
+            onClick={() => setShowDecisionWizard(true)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginTop: '8px',
+              backgroundColor: '#f0f9ff',
+              color: '#0284c7',
+              border: '2px solid #0284c7',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              fontSize: '0.9rem'
+            }}
+          >
+            🧭 開啟智能決策嚮導
+          </button>
+        )}
+
         {data && (
           <button onClick={() => handleExportExcel()} disabled={loading}>
             Export to Excel
@@ -601,6 +651,60 @@ function App() {
       </aside>
 
       <main className="main-content">
+        {/* Decision Wizard */}
+        {selectedProduct && selectedItem && !data && showDecisionWizard && (
+          <DecisionWizard
+            data={data ? data.data?.allRawPoints || [] : []}
+            sampleSize={cavityInfo?.total_cavities || 1}
+            onRecommendation={handleWizardRecommendation}
+            onSkip={handleWizardSkip}
+          />
+        )}
+
+        {/* Wizard Recommendation Summary */}
+        {wizardRecommendation && !showDecisionWizard && (
+          <div style={{
+            backgroundColor: '#f0f9ff',
+            border: '2px solid #0284c7',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#0284c7', marginBottom: '4px' }}>
+                ✓ 決策嚮導推薦
+              </div>
+              <div style={{ color: '#0c4a6e', fontSize: '0.9rem' }}>
+                {wizardRecommendation.recommendation.summary}
+              </div>
+              {wizardRecommendation.recommendation.warnings.length > 0 && (
+                <div style={{ marginTop: '8px', color: '#dc2626', fontSize: '0.85rem' }}>
+                  {wizardRecommendation.recommendation.warnings.map((w, i) => (
+                    <div key={i}>{w}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setWizardRecommendation(null)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#e0f2fe',
+                color: '#0284c7',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              關閉
+            </button>
+          </div>
+        )}
+
         {!data && !loading && (
           <div style={{ textAlign: 'center', marginTop: '10rem', opacity: 0.5 }}>
             <BarChart3 size={64} style={{ marginBottom: '1rem' }} />
